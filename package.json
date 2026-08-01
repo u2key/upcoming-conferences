@@ -7,7 +7,7 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "init-db": "node src/db/init.js",
-    "test": "node --test test/**/*.test.js"
+    "test": "node --test test/"
   },
   "keywords": [
     "conferences",
