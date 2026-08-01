@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>管理コンソール | Upcoming Conferences</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <a class="brand" href="/">
+        <span class="logo">UC</span>
+        Upcoming Conferences
+      </a>
+      <nav class="nav" id="nav-auth"></nav>
+    </div>
+  </header>
+
+  <main class="container" id="admin-root">
+    <h1 class="page-title">管理コンソール</h1>
+    <p class="page-desc">アカウント申請の承認・拒否、操作ログの閲覧とロールバック。</p>
+    <div id="flash" class="flash" hidden></div>
+
+    <div class="panel">
+      <div class="tabs" role="tablist">
+        <button type="button" class="tab active" data-panel="panel-applications">アカウント申請</button>
+        <button type="button" class="tab" data-panel="panel-logs">操作ログ</button>
+        <button type="button" class="tab" data-panel="panel-users">ユーザ一覧</button>
+      </div>
+
+      <!-- Applications -->
+      <div class="tab-panel" id="panel-applications">
+        <div class="panel-header">
+          <h2 style="font-size:1rem;margin:0;">申請一覧</h2>
+          <label class="toggle-row">
+            <input type="checkbox" id="toggle-hidden" />
+            非表示の拒否申請も表示
+          </label>
+        </div>
+        <p class="hint">
+          承認すると申請者にメール通知します。拒否するとコンソールから非表示になり、メールは送りません。
+          トグルで再表示すると承認ボタンが再び使えます。
+        </p>
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>氏名 / ユーザ名</th>
+                <th>メール</th>
+                <th>所属</th>
+                <th>状態</th>
+                <th class="optional">申請日</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-applications">
+              <tr><td colspan="7" class="empty">読み込み中…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Logs -->
+      <div class="tab-panel" id="panel-logs" hidden>
+        <p class="hint">操作ログは3か月間保持されます。ロールバックで変更前の状態に戻せます。</p>
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>日時</th>
+                <th>ユーザ</th>
+                <th>操作</th>
+                <th>内容</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-logs">
+              <tr><td colspan="6" class="empty">読み込み中…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Users -->
+      <div class="tab-panel" id="panel-users" hidden>
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>ユーザ名</th>
+                <th>氏名</th>
+                <th>メール</th>
+                <th>所属</th>
+                <th>状態</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-users">
+              <tr><td colspan="6" class="empty">読み込み中…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>

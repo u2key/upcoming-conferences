@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ログイン | Upcoming Conferences</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <a class="brand" href="/">
+        <span class="logo">UC</span>
+        Upcoming Conferences
+      </a>
+      <nav class="nav" id="nav-auth"></nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="panel auth-card">
+      <h1>ログイン</h1>
+      <p class="subtitle">承認済みアカウントでログインしてください。</p>
+      <form id="login-form">
+        <div class="form-grid" style="grid-template-columns: 1fr;">
+          <div class="form-field">
+            <label for="username">ユーザ名</label>
+            <input id="username" name="username" required autocomplete="username" />
+          </div>
+          <div class="form-field">
+            <label for="password">パスワード</label>
+            <input id="password" name="password" type="password" required autocomplete="current-password" />
+          </div>
+        </div>
+        <p class="form-error" id="form-error"></p>
+        <div class="form-actions">
+          <button type="submit" class="btn">ログイン</button>
+          <a class="btn btn-secondary" href="/register.html">アカウント申請</a>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/auth-pages.js"></script>
+</body>
+</html>

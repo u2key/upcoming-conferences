@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>アカウント申請 | Upcoming Conferences</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <a class="brand" href="/">
+        <span class="logo">UC</span>
+        Upcoming Conferences
+      </a>
+      <nav class="nav" id="nav-auth"></nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="panel auth-card" style="max-width: 480px;">
+      <h1>アカウント作成申請</h1>
+      <p class="subtitle">
+        メールアドレス・氏名・所属を提出して申請します。
+        管理者の承認後にアカウントが有効化され、メールで通知されます。
+      </p>
+      <form id="register-form">
+        <div class="form-grid" style="grid-template-columns: 1fr;">
+          <div class="form-field">
+            <label for="fullName">氏名 *</label>
+            <input id="fullName" name="fullName" required maxlength="100" />
+          </div>
+          <div class="form-field">
+            <label for="email">メールアドレス *</label>
+            <input id="email" name="email" type="email" required maxlength="200" />
+          </div>
+          <div class="form-field">
+            <label for="affiliation">所属 *</label>
+            <input id="affiliation" name="affiliation" required maxlength="200"
+                   placeholder="例: ○○大学 ○○研究室" />
+          </div>
+          <div class="form-field">
+            <label for="username">希望ユーザ名 *</label>
+            <input id="username" name="username" required maxlength="50"
+                   pattern="[A-Za-z0-9_\-\.]+" title="英数字・_-. のみ" autocomplete="username" />
+          </div>
+          <div class="form-field">
+            <label for="password">パスワード *</label>
+            <input id="password" name="password" type="password" required minlength="4"
+                   autocomplete="new-password" />
+          </div>
+          <div class="form-field">
+            <label for="passwordConfirm">パスワード（確認） *</label>
+            <input id="passwordConfirm" name="passwordConfirm" type="password" required minlength="4"
+                   autocomplete="new-password" />
+          </div>
+        </div>
+        <p class="hint" style="margin-top: 0.75rem;">
+          承認されるまでログインはできません。拒否された場合、メール通知は行われません。
+        </p>
+        <p class="form-error" id="form-error"></p>
+        <p class="form-success" id="form-success"></p>
+        <div class="form-actions">
+          <button type="submit" class="btn">申請する</button>
+          <a class="btn btn-secondary" href="/login.html">ログインへ</a>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/auth-pages.js"></script>
+</body>
+</html>

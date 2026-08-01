@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>学会締め切り一覧 | Upcoming Conferences</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <a class="brand" href="/">
+        <span class="logo">UC</span>
+        Upcoming Conferences
+      </a>
+      <nav class="nav" id="nav-auth"></nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h1 class="page-title">学会サブミッション締め切り一覧</h1>
+    <p class="page-desc">
+      国内会議・国際会議の申し込み／抄録／原稿提出期限を一覧表示します。
+      リアルタイムで更新されます。
+    </p>
+    <div class="live-status disconnected" id="live-status">
+      <span class="live-dot"></span>
+      <span class="live-label">接続確認中…</span>
+    </div>
+
+    <section class="panel" id="panel-domestic">
+      <div class="panel-header">
+        <h2>
+          <span class="badge badge-domestic">国内</span>
+          国内会議
+        </h2>
+        <button type="button" class="btn btn-sm" id="btn-add-conference" hidden>+ 学会を追加</button>
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>学会名</th>
+              <th>申し込み期限</th>
+              <th class="optional">抄録提出期限</th>
+              <th class="optional">原稿提出期限</th>
+              <th>開始日</th>
+              <th class="optional">終了日</th>
+              <th>場所</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-domestic">
+            <tr><td colspan="8" class="empty">読み込み中…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-international">
+      <div class="panel-header">
+        <h2>
+          <span class="badge badge-international">国際</span>
+          国際会議
+        </h2>
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>学会名</th>
+              <th>申し込み期限</th>
+              <th class="optional">抄録提出期限</th>
+              <th class="optional">原稿提出期限</th>
+              <th>開始日</th>
+              <th class="optional">終了日</th>
+              <th>場所</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-international">
+            <tr><td colspan="8" class="empty">読み込み中…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Edit / Create modal -->
+  <div class="modal-backdrop" id="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <h3 id="modal-title">学会情報の追加</h3>
+      <form id="conf-form">
+        <input type="hidden" name="id" value="" />
+        <div class="form-grid">
+          <div class="form-field full">
+            <label for="f-name">学会名 *</label>
+            <input id="f-name" name="name" required maxlength="200" />
+          </div>
+          <div class="form-field">
+            <label for="f-type">区分 *</label>
+            <select id="f-type" name="type" required>
+              <option value="domestic">国内会議</option>
+              <option value="international">国際会議</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="f-location">場所</label>
+            <input id="f-location" name="location" maxlength="200" />
+          </div>
+          <div class="form-field">
+            <label for="f-app">申し込み期限</label>
+            <input id="f-app" name="applicationDeadline" type="date" />
+          </div>
+          <div class="form-field">
+            <label for="f-abs">抄録提出期限</label>
+            <input id="f-abs" name="abstractDeadline" type="date" />
+          </div>
+          <div class="form-field">
+            <label for="f-man">原稿提出期限</label>
+            <input id="f-man" name="manuscriptDeadline" type="date" />
+          </div>
+          <div class="form-field">
+            <label for="f-start">学会開始日</label>
+            <input id="f-start" name="startDate" type="date" />
+          </div>
+          <div class="form-field">
+            <label for="f-end">学会終了日</label>
+            <input id="f-end" name="endDate" type="date" />
+          </div>
+        </div>
+        <p class="form-error" id="form-error"></p>
+        <div class="form-actions">
+          <button type="submit" class="btn">保存</button>
+          <button type="button" class="btn btn-secondary" id="btn-cancel-modal">キャンセル</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    Upcoming Conferences — 学会締め切り管理
+  </footer>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/conferences.js"></script>
+</body>
+</html>
