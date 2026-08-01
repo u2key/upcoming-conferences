@@ -1,0 +1,32 @@
+{
+  "name": "upcoming-conferences",
+  "version": "1.0.0",
+  "description": "学会サブミッション締め切り管理システム",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "init-db": "node src/db/init.js",
+    "test": "node --test test/**/*.test.js"
+  },
+  "keywords": [
+    "conferences",
+    "deadlines",
+    "academic"
+  ],
+  "author": "u2key",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.7.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "nodemailer": "^6.9.16",
+    "socket.io": "^4.8.1"
+  }
+}
