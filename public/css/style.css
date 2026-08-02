@@ -510,11 +510,7 @@ footer.site-footer {
 }
 
 @media (max-width: 640px) {
-  /* Hide optional columns to reduce horizontal width */
-  table.data th.optional,
-  table.data td.optional {
-    display: none;
-  }
+  /* Keep all columns visible on small screens; stacked mode will show labels vertically when needed */
 
   /* Make header compact and stack nav elements */
   .site-header .inner {
