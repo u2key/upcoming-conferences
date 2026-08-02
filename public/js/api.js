@@ -1,4 +1,4 @@
-'use strict';
+(function(){ 'use strict';
 
 /**
  * Thin fetch wrapper for JSON APIs (credentials included for session cookies).
@@ -42,3 +42,4 @@ async function getMe() {
 }
 
 window.UCApi = { api, getMe };
+})();
