@@ -27,6 +27,19 @@ function getDb() {
   const schema = fs.readFileSync(schemaPath, 'utf8');
   db.exec(schema);
 
+  // Backfill migrations for existing databases: add 'website' column if missing
+  try {
+    const info = db.prepare("PRAGMA table_info('conferences')").all();
+    const cols = info.map((r) => r.name);
+    if (!cols.includes('website')) {
+      // Add website column with a safe default
+      db.prepare("ALTER TABLE conferences ADD COLUMN website TEXT NOT NULL DEFAULT ''").run();
+    }
+  } catch (e) {
+    // Migration failures should not crash startup; log and continue
+    console.error('DB migration check failed:', e && e.message ? e.message : e);
+  }
+
   return db;
 }
 
