@@ -338,10 +338,11 @@ function onTableClick(e) {
 }
 
 function setupEditorUI() {
-  const addBtn = document.getElementById('btn-add-conference');
-  if (addBtn) {
+  const addBtn1 = document.getElementById('btn-add-conference1');
+  const addBtn2 = document.getElementById('btn-add-conference2');
+  if (addBtn1) {
     // Always attach handler: redirect viewers to login, editors open the modal
-    addBtn.addEventListener('click', () => {
+    addBtn1.addEventListener('click', () => {
       if (!currentUser) {
         // Not logged in -> go to login page
         location.href = '/login.html';
@@ -350,7 +351,20 @@ function setupEditorUI() {
       openModal(null);
     });
     // visibility toggled based on auth state
-    addBtn.hidden = !currentUser;
+    addBtn1.hidden = !currentUser;
+  }
+  if (addBtn2) {
+    // Always attach handler: redirect viewers to login, editors open the modal
+    addBtn2.addEventListener('click', () => {
+      if (!currentUser) {
+        // Not logged in -> go to login page
+        location.href = '/login.html';
+        return;
+      }
+      openModal(null);
+    });
+    // visibility toggled based on auth state
+    addBtn2.hidden = !currentUser;
   }
 
   if (currentUser) {

@@ -567,8 +567,39 @@ table.data thead th[data-sort-key] {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.sort-controls {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.sort-controls .hint {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+#sort-select {
+  display: inline-block;
+  max-width: min(48ch, 100%);
+  width: auto;
+  min-width: 10ch;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 #sort-select:focus {
   outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+@media (max-width: 640px) {
+  #sort-select { min-width: 8ch; }
 }
 
 /* Responsive stacked table for very narrow screens: avoid horizontal scroll */

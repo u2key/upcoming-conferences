@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>学会締め切り一覧 | Upcoming Conferences</title>
+  <title>Upcoming Conferences</title>
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
-  <header class="site-header">
+  <header id="site-header" class="site-header">
     <div class="inner">
       <a class="brand" href="/">
         <span class="logo">UC</span>
@@ -18,17 +18,13 @@
   </header>
 
   <main class="container">
-    <h1 class="page-title">学会サブミッション締め切り一覧</h1>
-    <p class="page-desc">
-      国内会議・国際会議の申し込み／抄録／原稿提出期限を一覧表示します。
-      リアルタイムで更新されます。
-    </p>
+    <!-- <h1 class="page-title">学会サブミッション締め切り一覧</h1> --!>
 
-    <div style="margin-top:0.75rem;display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+    <div class="sort-controls">
       <label class="hint" for="sort-select">並び替え:</label>
       <select id="sort-select">
-        <option value="nextDeadline">次の締め切り（申し込み／抄録／原稿の中で一番近い日）</option>
-        <option value="applicationDeadline">申し込み期限</option>
+        <option value="nextDeadline">次の締め切り（申込／抄録／原稿の中で近い日）</option>
+        <option value="applicationDeadline">申込期限</option>
         <option value="abstractDeadline">抄録提出期限</option>
         <option value="manuscriptDeadline">原稿提出期限</option>
         <option value="startDate">開始日</option>
@@ -47,14 +43,14 @@
           <span class="badge badge-domestic">国内</span>
           国内会議
         </h2>
-        <button type="button" class="btn btn-sm" id="btn-add-conference" hidden>+ 学会を追加</button>
+        <button type="button" class="btn btn-sm" id="btn-add-conference1" hidden>+ 学会を追加</button>
       </div>
       <div class="table-wrap">
         <table class="data">
           <thead>
             <tr>
               <th>学会名</th>
-              <th data-sort-key="applicationDeadline">申し込み期限</th>
+              <th data-sort-key="applicationDeadline">申込期限</th>
               <th class="optional" data-sort-key="abstractDeadline">抄録提出期限</th>
               <th class="optional" data-sort-key="manuscriptDeadline">原稿提出期限</th>
               <th data-sort-key="startDate">開始日</th>
@@ -76,13 +72,14 @@
           <span class="badge badge-international">国際</span>
           国際会議
         </h2>
+        <button type="button" class="btn btn-sm" id="btn-add-conference2" hidden>+ 学会を追加</button>
       </div>
       <div class="table-wrap">
         <table class="data">
           <thead>
             <tr>
               <th>学会名</th>
-              <th data-sort-key="applicationDeadline">申し込み期限</th>
+              <th data-sort-key="applicationDeadline">申込期限</th>
               <th class="optional" data-sort-key="abstractDeadline">抄録提出期限</th>
               <th class="optional" data-sort-key="manuscriptDeadline">原稿提出期限</th>
               <th data-sort-key="startDate">開始日</th>
@@ -126,7 +123,7 @@
             <input id="f-website" name="website" type="url" placeholder="https://..." maxlength="500" />
           </div>
           <div class="form-field">
-            <label for="f-app">申し込み期限</label>
+            <label for="f-app">申込期限</label>
             <input id="f-app" name="applicationDeadline" type="date" />
           </div>
           <div class="form-field">
@@ -155,9 +152,9 @@
     </div>
   </div>
 
-  <footer class="site-footer">
-    Upcoming Conferences — 学会締め切り管理
-  </footer>
+  <!-- <footer class="site-footer">
+    — Upcoming Conferences —
+  </footer> --!>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/api.js"></script>
