@@ -1,4 +1,4 @@
-'use strict';
+(function(){ 'use strict';
 
 /** Format ISO/date string for display (YYYY-MM-DD or empty). */
 function formatDate(value) {
@@ -88,3 +88,4 @@ window.UCCommon = {
   escapeHtml,
   renderNavAuth,
 };
+})();
