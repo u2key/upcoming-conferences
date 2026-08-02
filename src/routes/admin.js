@@ -128,4 +128,37 @@ router.get('/users', (_req, res) => {
   }
 });
 
+/** POST /api/admin/users/:id/reset-password */
+router.post('/users/:id/reset-password', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const target = users.findById(id);
+    if (!target) return res.status(404).json({ error: '指定されたユーザが見つかりません' });
+
+    // Generate a random temporary password
+    const newPassword = Array.from({ length: 12 })
+      .map(() => String.fromCharCode(33 + Math.floor(Math.random() * 94)))
+      .join('');
+
+    const updated = users.updatePassword(id, newPassword);
+
+    // Send notification email
+    try {
+      await mail.sendPasswordResetNotification({
+        email: target.email,
+        fullName: target.fullName || target.username,
+        username: target.username,
+        newPassword,
+      });
+    } catch (mailErr) {
+      console.error('[mail] password reset notification failed:', mailErr.message);
+      return res.json({ user: updated, mailSent: false, warning: 'パスワードはリセットされましたが、メール送信に失敗しました' });
+    }
+
+    res.json({ user: updated, mailSent: true });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

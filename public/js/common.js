@@ -64,6 +64,7 @@ async function renderNavAuth() {
       ${user.isAdmin ? '<span class="badge badge-pending">admin</span>' : ''}
     </span>
     ${adminLink}
+    <a class="btn btn-sm" href="/password.html">パスワード変更</a>
     <button type="button" class="btn btn-ghost btn-sm" id="btn-logout">ログアウト</button>
   `;
 

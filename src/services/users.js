@@ -28,6 +28,24 @@ function findById(id) {
   );
 }
 
+function findRawById(id) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+}
+
+function verifyPassword(userId, password) {
+  const row = findRawById(userId);
+  if (!row || !row.is_active) return false;
+  return bcrypt.compareSync(password, row.password_hash);
+}
+
+function updatePassword(userId, newPassword) {
+  const db = getDb();
+  const hash = hashPassword(newPassword);
+  db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(hash, userId);
+  return findById(userId);
+}
+
 function findByUsername(username) {
   const db = getDb();
   return db.prepare('SELECT * FROM users WHERE username = ?').get(username);
@@ -78,6 +96,9 @@ function listUsers() {
 module.exports = {
   toPublic,
   findById,
+  findRawById,
+  verifyPassword,
+  updatePassword,
   findByUsername,
   findByEmail,
   authenticate,

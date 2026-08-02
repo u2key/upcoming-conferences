@@ -71,4 +71,25 @@ router.get('/session-check', requireAuth, (req, res) => {
   res.json({ user: req.user });
 });
 
+/** POST /api/auth/change-password */
+router.post('/change-password', requireAuth, (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: '現在のパスワードと新しいパスワードを入力してください' });
+  }
+  if (typeof newPassword !== 'string' || newPassword.length < 6) {
+    return res.status(400).json({ error: '新しいパスワードは6文字以上で指定してください' });
+  }
+
+  try {
+    const ok = users.verifyPassword(req.user.id, currentPassword);
+    if (!ok) return res.status(401).json({ error: '現在のパスワードが正しくありません' });
+
+    const updated = users.updatePassword(req.user.id, newPassword);
+    res.json({ user: updated, message: 'パスワードを変更しました' });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message || 'パスワード変更に失敗しました' });
+  }
+});
+
 module.exports = router;

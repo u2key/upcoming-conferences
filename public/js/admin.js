@@ -202,6 +202,9 @@ async function loadUsers() {
         <td>${escapeHtml(u.email)}</td>
         <td>${escapeHtml(u.affiliation)}</td>
         <td>${u.isActive ? '有効' : '無効'}</td>
+        <td class="actions">
+          <button type="button" class="btn btn-secondary btn-sm" data-action="reset" data-id="${u.id}">パスワードリセット</button>
+        </td>
       </tr>`
       )
       .join('');
@@ -226,6 +229,7 @@ async function main() {
     .getElementById('tbody-applications')
     .addEventListener('click', onApplicationAction);
   document.getElementById('tbody-logs').addEventListener('click', onLogAction);
+  document.getElementById('tbody-users').addEventListener('click', onUserAction);
 
   const toggle = document.getElementById('toggle-hidden');
   toggle.addEventListener('change', () => {
@@ -234,6 +238,29 @@ async function main() {
   });
 
   await loadApplications();
+  await loadUsers();
+}
+
+async function onUserAction(e) {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  const action = btn.dataset.action;
+
+  try {
+    if (action === 'reset') {
+      if (!confirm(`ユーザ #${id} のパスワードをリセットして、登録メールアドレスに通知しますか？`)) return;
+      const res = await api(`/api/admin/users/${id}/reset-password`, { method: 'POST' });
+      showFlash(
+        res.mailSent
+          ? `ユーザ ${id} のパスワードをリセットし、メールを送信しました`
+          : res.warning || 'パスワードをリセットしました（メール送信失敗）'
+      );
+      await loadUsers();
+    }
+  } catch (err) {
+    showFlash(err.message, false);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', main);

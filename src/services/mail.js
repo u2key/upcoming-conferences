@@ -62,7 +62,34 @@ async function sendApprovalNotification({ email, fullName, username }) {
   });
 }
 
+async function sendPasswordResetNotification({ email, fullName, username, newPassword }) {
+  const loginUrl = `${config.appBaseUrl}/login.html`;
+  const text = [
+    `${fullName} 様`,
+    '',
+    '管理者によりパスワードがリセットされました。',
+    '',
+    `ユーザ名: ${username}`,
+    `新しいパスワード: ${newPassword}`,
+    `ログインURL: ${loginUrl}`,
+    '',
+    'ログイン後、必要に応じてパスワードを変更してください。',
+    '',
+    '---',
+    '学会締め切り管理システム',
+  ].join('\n');
+
+  const transport = getTransporter();
+  await transport.sendMail({
+    from: config.mail.from,
+    to: email,
+    subject: '[学会締め切り管理] パスワードがリセットされました',
+    text,
+  });
+}
+
 module.exports = {
   getTransporter,
   sendApprovalNotification,
+  sendPasswordResetNotification,
 };
