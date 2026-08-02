@@ -557,6 +557,20 @@ table.data thead th[data-sort-key] {
   color: var(--muted);
 }
 
+/* Limit width of the sort dropdown to avoid overflowing off-screen */
+#sort-select {
+  display: inline-block;
+  max-width: min(60ch, 100%);
+  width: auto;
+  min-width: 8ch;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#sort-select:focus {
+  outline-offset: 2px;
+}
+
 /* Responsive stacked table for very narrow screens: avoid horizontal scroll */
 @media (max-width: 540px), .stacked-table table.data {
   table.data thead { display: none; }
