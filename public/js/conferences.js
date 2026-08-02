@@ -189,21 +189,24 @@ function setupEditorUI() {
   const addBtn = document.getElementById('btn-add-conference');
   if (!currentUser) {
     if (addBtn) addBtn.hidden = true;
-    return;
-  }
-  if (addBtn) {
-    addBtn.hidden = false;
-    addBtn.addEventListener('click', () => openModal(null));
+  } else {
+    if (addBtn) {
+      addBtn.hidden = false;
+      addBtn.addEventListener('click', () => openModal(null));
+    }
+
+    document.getElementById('conf-form').addEventListener('submit', onSubmitForm);
+    document.getElementById('btn-cancel-modal').addEventListener('click', closeModal);
+    document.getElementById('modal-backdrop').addEventListener('click', (e) => {
+      if (e.target.id === 'modal-backdrop') closeModal();
+    });
   }
 
-  document.getElementById('conf-form').addEventListener('submit', onSubmitForm);
-  document.getElementById('btn-cancel-modal').addEventListener('click', closeModal);
-  document.getElementById('modal-backdrop').addEventListener('click', (e) => {
-    if (e.target.id === 'modal-backdrop') closeModal();
-  });
-
-  document.getElementById('tbody-domestic').addEventListener('click', onTableClick);
-  document.getElementById('tbody-international').addEventListener('click', onTableClick);
+  // Always attach table click handlers so viewers can interact safely (no edit buttons shown)
+  const tbodyDom = document.getElementById('tbody-domestic');
+  if (tbodyDom) tbodyDom.addEventListener('click', onTableClick);
+  const tbodyIntl = document.getElementById('tbody-international');
+  if (tbodyIntl) tbodyIntl.addEventListener('click', onTableClick);
 }
 
 async function main() {

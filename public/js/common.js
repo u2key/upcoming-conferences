@@ -48,6 +48,7 @@ async function renderNavAuth() {
   }
 
   if (!user) {
+    document.body.dataset.role = 'viewer';
     el.innerHTML = `
       <a class="btn btn-secondary btn-sm" href="/login.html">ログイン</a>
       <a class="btn btn-sm" href="/register.html">アカウント申請</a>
@@ -55,6 +56,7 @@ async function renderNavAuth() {
     return null;
   }
 
+  document.body.dataset.role = 'editor';
   const adminLink = user.isAdmin
     ? `<a class="btn btn-secondary btn-sm" href="/admin.html">管理コンソール</a>`
     : '';
