@@ -549,3 +549,14 @@ footer.site-footer {
 @media (min-width: 641px) and (max-width: 900px) {
   .table-wrap { -webkit-overflow-scrolling: touch; }
 }
+
+/* Sortable header indicator */
+table.data thead th[data-sort-key] {
+  cursor: pointer;
+  position: relative;
+}
+.sort-indicator {
+  font-size: 0.85rem;
+  margin-left: 0.25rem;
+  color: var(--muted);
+}

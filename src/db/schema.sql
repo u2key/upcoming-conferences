@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS conferences (
   manuscript_deadline TEXT,
   start_date TEXT,
   end_date TEXT,
+  website TEXT NOT NULL DEFAULT '',
   location TEXT NOT NULL DEFAULT '',
   is_hidden INTEGER NOT NULL DEFAULT 0,
   created_by INTEGER,

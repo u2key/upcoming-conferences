@@ -23,6 +23,19 @@
       国内会議・国際会議の申し込み／抄録／原稿提出期限を一覧表示します。
       リアルタイムで更新されます。
     </p>
+
+    <div style="margin-top:0.75rem;display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+      <label class="hint" for="sort-select">並び替え:</label>
+      <select id="sort-select">
+        <option value="nextDeadline">次の締め切り（申し込み／抄録／原稿の中で一番近い日）</option>
+        <option value="applicationDeadline">申し込み期限</option>
+        <option value="abstractDeadline">抄録提出期限</option>
+        <option value="manuscriptDeadline">原稿提出期限</option>
+        <option value="startDate">開始日</option>
+        <option value="endDate">終了日</option>
+      </select>
+    </div>
+
     <div class="live-status disconnected" id="live-status">
       <span class="live-dot"></span>
       <span class="live-label">接続確認中…</span>
@@ -41,11 +54,11 @@
           <thead>
             <tr>
               <th>学会名</th>
-              <th>申し込み期限</th>
-              <th class="optional">抄録提出期限</th>
-              <th class="optional">原稿提出期限</th>
-              <th>開始日</th>
-              <th class="optional">終了日</th>
+              <th data-sort-key="applicationDeadline">申し込み期限</th>
+              <th class="optional" data-sort-key="abstractDeadline">抄録提出期限</th>
+              <th class="optional" data-sort-key="manuscriptDeadline">原稿提出期限</th>
+              <th data-sort-key="startDate">開始日</th>
+              <th class="optional" data-sort-key="endDate">終了日</th>
               <th>場所</th>
               <th></th>
             </tr>
@@ -69,11 +82,11 @@
           <thead>
             <tr>
               <th>学会名</th>
-              <th>申し込み期限</th>
-              <th class="optional">抄録提出期限</th>
-              <th class="optional">原稿提出期限</th>
-              <th>開始日</th>
-              <th class="optional">終了日</th>
+              <th data-sort-key="applicationDeadline">申し込み期限</th>
+              <th class="optional" data-sort-key="abstractDeadline">抄録提出期限</th>
+              <th class="optional" data-sort-key="manuscriptDeadline">原稿提出期限</th>
+              <th data-sort-key="startDate">開始日</th>
+              <th class="optional" data-sort-key="endDate">終了日</th>
               <th>場所</th>
               <th></th>
             </tr>
@@ -107,6 +120,10 @@
           <div class="form-field">
             <label for="f-location">場所</label>
             <input id="f-location" name="location" maxlength="200" />
+          </div>
+          <div class="form-field">
+            <label for="f-website">ウェブサイト（URL）</label>
+            <input id="f-website" name="website" type="url" placeholder="https://..." maxlength="500" />
           </div>
           <div class="form-field">
             <label for="f-app">申し込み期限</label>

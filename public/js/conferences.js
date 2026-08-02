@@ -5,6 +5,8 @@ const { formatDate, deadlineClass, escapeHtml, renderNavAuth } = window.UCCommon
 
 let currentUser = null;
 let allConferences = [];
+let sortKey = 'nextDeadline';
+let sortDir = 1; // 1 = asc, -1 = desc
 
 function deadlineCell(value) {
   const cls = deadlineClass(value);
@@ -43,7 +45,7 @@ function renderTable(type, rows, tbodyId) {
 
       return `
         <tr class="${hiddenClass}" data-id="${c.id}">
-          <td><strong>${escapeHtml(c.name)}</strong>${hiddenBadge}</td>
+          <td><strong>${escapeHtml(c.name)}</strong>${hiddenBadge}${c.website ? ` <a class="hint" href="${escapeHtml(c.website)}" target="_blank" rel="noopener noreferrer">↗</a>` : ''}</td>
           ${deadlineCell(c.applicationDeadline)}
           ${deadlineCell(c.abstractDeadline)}
           ${deadlineCell(c.manuscriptDeadline)}
@@ -56,8 +58,53 @@ function renderTable(type, rows, tbodyId) {
     .join('');
 }
 
+function isEnded(conf) {
+  if (!conf || !conf.endDate) return false;
+  const end = (conf.endDate || '').slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
+  return end < today;
+}
+
+function getNextDeadlineValue(conf) {
+  if (!conf) return '';
+  const keys = ['applicationDeadline', 'abstractDeadline', 'manuscriptDeadline'];
+  const today = new Date().toISOString().slice(0, 10);
+  const dates = keys
+    .map((k) => (conf[k] ? (conf[k] || '').slice(0, 10) : null))
+    .filter(Boolean);
+  if (!dates.length) return '';
+  // prefer upcoming (>= today)
+  const future = dates.filter((d) => d >= today);
+  if (future.length) return future.sort()[0];
+  // otherwise return the most recent past (largest)
+  return dates.sort().slice(-1)[0];
+}
+
+function sortConferences() {
+  if (!sortKey) return;
+  allConferences.sort((a, b) => {
+    let va, vb;
+    if (sortKey === 'nextDeadline') {
+      va = getNextDeadlineValue(a) || '';
+      vb = getNextDeadlineValue(b) || '';
+    } else {
+      va = a[sortKey] || '';
+      vb = b[sortKey] || '';
+    }
+    if (!va && !vb) return 0;
+    if (!va) return 1 * sortDir;
+    if (!vb) return -1 * sortDir;
+    if (va < vb) return -1 * sortDir;
+    if (va > vb) return 1 * sortDir;
+    return 0;
+  });
+}
+
 function renderAll(list) {
-  allConferences = list || [];
+  // Filter out conferences that have already ended
+  allConferences = (list || []).filter((c) => !isEnded(c));
+  // Apply sorting if set
+  sortConferences();
   renderTable('domestic', allConferences, 'tbody-domestic');
   renderTable('international', allConferences, 'tbody-international');
 }
@@ -97,6 +144,64 @@ function connectSocket() {
     }
   });
   return socket;
+}
+
+function setupSorting() {
+  const ths = Array.from(document.querySelectorAll('table.data thead th[data-sort-key]'));
+  const select = document.getElementById('sort-select');
+
+  function clearIndicators() {
+    ths.forEach((t) => {
+      t.querySelectorAll('.sort-indicator').forEach((s) => s.remove());
+    });
+  }
+
+  ths.forEach((th) => {
+    // store original text
+    th.dataset.orig = th.textContent.trim();
+    th.addEventListener('click', () => {
+      const key = th.dataset.sortKey;
+      if (sortKey === key) {
+        sortDir = -sortDir; // toggle
+      } else {
+        sortKey = key;
+        sortDir = 1;
+      }
+      // update indicators
+      clearIndicators();
+      const ind = document.createElement('span');
+      ind.className = 'sort-indicator';
+      ind.textContent = sortDir === 1 ? ' ▲' : ' ▼';
+      th.appendChild(ind);
+
+      // reflect in select if present
+      if (select) select.value = sortKey;
+
+      sortConferences();
+      renderAll(allConferences);
+    });
+  });
+
+  if (select) {
+    // set initial select value
+    select.value = sortKey || '';
+    select.addEventListener('change', () => {
+      const key = select.value || null;
+      sortKey = key;
+      sortDir = 1;
+      clearIndicators();
+      // if key corresponds to a header, mark it
+      const match = ths.find((t) => t.dataset.sortKey === key);
+      if (match) {
+        const ind = document.createElement('span');
+        ind.className = 'sort-indicator';
+        ind.textContent = ' ▲';
+        match.appendChild(ind);
+      }
+      sortConferences();
+      renderAll(allConferences);
+    });
+  }
 }
 
 /* ---------- Modal form ---------- */
@@ -140,6 +245,7 @@ function formToBody(form) {
     manuscriptDeadline: form.elements.manuscriptDeadline.value || null,
     startDate: form.elements.startDate.value || null,
     endDate: form.elements.endDate.value || null,
+    website: form.elements.website ? form.elements.website.value.trim() : '',
     location: form.elements.location.value.trim(),
   };
 }
@@ -187,14 +293,21 @@ function onTableClick(e) {
 
 function setupEditorUI() {
   const addBtn = document.getElementById('btn-add-conference');
-  if (!currentUser) {
-    if (addBtn) addBtn.hidden = true;
-  } else {
-    if (addBtn) {
-      addBtn.hidden = false;
-      addBtn.addEventListener('click', () => openModal(null));
-    }
+  if (addBtn) {
+    // Always attach handler: redirect viewers to login, editors open the modal
+    addBtn.addEventListener('click', () => {
+      if (!currentUser) {
+        // Not logged in -> go to login page
+        location.href = '/login.html';
+        return;
+      }
+      openModal(null);
+    });
+    // visibility toggled based on auth state
+    addBtn.hidden = !currentUser;
+  }
 
+  if (currentUser) {
     document.getElementById('conf-form').addEventListener('submit', onSubmitForm);
     document.getElementById('btn-cancel-modal').addEventListener('click', closeModal);
     document.getElementById('modal-backdrop').addEventListener('click', (e) => {
@@ -212,6 +325,7 @@ function setupEditorUI() {
 async function main() {
   currentUser = await renderNavAuth();
   setupEditorUI();
+  setupSorting();
   try {
     await loadConferences();
   } catch (err) {
