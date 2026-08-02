@@ -161,4 +161,22 @@ router.post('/users/:id/reset-password', async (req, res) => {
   }
 });
 
+/** POST /api/admin/users/:id/admin */
+router.post('/users/:id/admin', (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const isAdmin = !!(req.body && req.body.isAdmin);
+    if (id === 1 && !isAdmin) {
+      return res.status(400).json({ error: 'root 管理者は剥奪できません' });
+    }
+    const target = users.findById(id);
+    if (!target) return res.status(404).json({ error: '指定されたユーザが見つかりません' });
+
+    const updated = users.setAdmin(id, isAdmin);
+    res.json({ user: updated });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

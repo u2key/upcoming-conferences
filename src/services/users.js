@@ -93,12 +93,19 @@ function listUsers() {
     .map(toPublic);
 }
 
+function setAdmin(userId, isAdmin) {
+  const db = getDb();
+  db.prepare('UPDATE users SET is_admin = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(isAdmin ? 1 : 0, userId);
+  return findById(userId);
+}
+
 module.exports = {
   toPublic,
   findById,
   findRawById,
   verifyPassword,
   updatePassword,
+  setAdmin,
   findByUsername,
   findByEmail,
   authenticate,

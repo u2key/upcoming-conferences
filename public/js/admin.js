@@ -204,6 +204,7 @@ async function loadUsers() {
         <td>${u.isActive ? '有効' : '無効'}</td>
         <td class="actions">
           <button type="button" class="btn btn-secondary btn-sm" data-action="reset" data-id="${u.id}">パスワードリセット</button>
+          ${u.id !== 1 ? (u.isAdmin ? `<button type="button" class="btn btn-danger btn-sm" data-action="revoke" data-id="${u.id}">管理者剥奪</button>` : `<button type="button" class="btn btn-success btn-sm" data-action="grant" data-id="${u.id}">管理者付与</button>`) : '<span class="hint">root</span>'}
         </td>
       </tr>`
       )
@@ -256,6 +257,16 @@ async function onUserAction(e) {
           ? `ユーザ ${id} のパスワードをリセットし、メールを送信しました`
           : res.warning || 'パスワードをリセットしました（メール送信失敗）'
       );
+      await loadUsers();
+    } else if (action === 'grant' || action === 'revoke') {
+      const makeAdmin = action === 'grant';
+      const verb = makeAdmin ? '付与' : '剥奪';
+      if (!confirm(`ユーザ #${id} に管理者権限を${verb}しますか？`)) return;
+      const res = await api(`/api/admin/users/${id}/admin`, {
+        method: 'POST',
+        body: { isAdmin: makeAdmin },
+      });
+      showFlash(`ユーザ ${id} の管理者権限を${verb}しました`);
       await loadUsers();
     }
   } catch (err) {
