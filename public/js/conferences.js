@@ -8,9 +8,9 @@ let allConferences = [];
 let sortKey = 'nextDeadline';
 let sortDir = 1; // 1 = asc, -1 = desc
 
-function deadlineCell(value) {
+function deadlineCell(value, label) {
   const cls = deadlineClass(value);
-  return `<td class="deadline ${cls}">${escapeHtml(formatDate(value))}</td>`;
+  return `<td class="deadline ${cls}" data-label="${escapeHtml(label)}">${escapeHtml(formatDate(value))}</td>`;
 }
 
 function renderTable(type, rows, tbodyId) {
@@ -45,14 +45,14 @@ function renderTable(type, rows, tbodyId) {
 
       return `
         <tr class="${hiddenClass}" data-id="${c.id}">
-          <td><strong>${escapeHtml(c.name)}</strong>${hiddenBadge}${c.website ? ` <a class="hint" href="${escapeHtml(c.website)}" target="_blank" rel="noopener noreferrer">↗</a>` : ''}</td>
-          ${deadlineCell(c.applicationDeadline)}
-          ${deadlineCell(c.abstractDeadline)}
-          ${deadlineCell(c.manuscriptDeadline)}
-          ${deadlineCell(c.startDate)}
-          ${deadlineCell(c.endDate)}
-          <td>${escapeHtml(c.location || '—')}</td>
-          ${actions}
+          <td data-label="学会名"><strong>${escapeHtml(c.name)}</strong>${hiddenBadge}${c.website ? ` <a class="hint" href="${escapeHtml(c.website)}" target="_blank" rel="noopener noreferrer">↗</a>` : ''}</td>
+          ${deadlineCell(c.applicationDeadline, '申し込み期限')}
+          ${deadlineCell(c.abstractDeadline, '抄録提出期限')}
+          ${deadlineCell(c.manuscriptDeadline, '原稿提出期限')}
+          ${deadlineCell(c.startDate, '開始日')}
+          ${deadlineCell(c.endDate, '終了日')}
+          <td data-label="場所">${escapeHtml(c.location || '—')}</td>
+          ${actions.replace('<td class="actions">', '<td class="actions" data-label="操作">')}
         </tr>`;
     })
     .join('');

@@ -560,3 +560,16 @@ table.data thead th[data-sort-key] {
   margin-left: 0.25rem;
   color: var(--muted);
 }
+
+/* Responsive stacked table for very narrow screens: avoid horizontal scroll */
+@media (max-width: 540px) {
+  table.data thead { display: none; }
+  table.data, table.data tbody { display: block; width: 100%; }
+  table.data tr { display: block; margin: 0 0 0.75rem; padding: 0.6rem; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); }
+  table.data td { display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0; border-bottom: none; }
+  table.data td::before { content: attr(data-label); color: var(--muted); font-weight: 700; margin-right: 0.75rem; white-space: nowrap; }
+  table.data td.deadline::before { color: var(--muted); font-weight: 600; }
+  table.data td.actions { display: flex; gap: 0.5rem; justify-content: flex-end; min-width: 120px; }
+  table.data td .hint { margin-left: 0.5rem; }
+  .table-wrap { overflow-x: visible; }
+}
