@@ -562,7 +562,7 @@ table.data thead th[data-sort-key] {
 }
 
 /* Responsive stacked table for very narrow screens: avoid horizontal scroll */
-@media (max-width: 540px) {
+@media (max-width: 540px), .stacked-table table.data {
   table.data thead { display: none; }
   table.data, table.data tbody { display: block; width: 100%; }
   table.data tr { display: block; margin: 0 0 0.75rem; padding: 0.6rem; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); }

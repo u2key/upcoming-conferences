@@ -8,9 +8,9 @@ let allConferences = [];
 let sortKey = 'nextDeadline';
 let sortDir = 1; // 1 = asc, -1 = desc
 
-function deadlineCell(value, label) {
+function deadlineCell(value, label, optional = false) {
   const cls = deadlineClass(value);
-  return `<td class="deadline ${cls}" data-label="${escapeHtml(label)}">${escapeHtml(formatDate(value))}</td>`;
+  return `<td class="deadline ${cls}${optional ? ' optional' : ''}" data-label="${escapeHtml(label)}">${escapeHtml(formatDate(value))}</td>`;
 }
 
 function renderTable(type, rows, tbodyId) {
@@ -46,11 +46,11 @@ function renderTable(type, rows, tbodyId) {
       return `
         <tr class="${hiddenClass}" data-id="${c.id}">
           <td data-label="学会名"><strong>${escapeHtml(c.name)}</strong>${hiddenBadge}${c.website ? ` <a class="hint" href="${escapeHtml(c.website)}" target="_blank" rel="noopener noreferrer">↗</a>` : ''}</td>
-          ${deadlineCell(c.applicationDeadline, '申し込み期限')}
-          ${deadlineCell(c.abstractDeadline, '抄録提出期限')}
-          ${deadlineCell(c.manuscriptDeadline, '原稿提出期限')}
-          ${deadlineCell(c.startDate, '開始日')}
-          ${deadlineCell(c.endDate, '終了日')}
+          ${deadlineCell(c.applicationDeadline, '申し込み期限', false)}
+          ${deadlineCell(c.abstractDeadline, '抄録提出期限', true)}
+          ${deadlineCell(c.manuscriptDeadline, '原稿提出期限', true)}
+          ${deadlineCell(c.startDate, '開始日', false)}
+          ${deadlineCell(c.endDate, '終了日', true)}
           <td data-label="場所">${escapeHtml(c.location || '—')}</td>
           ${actions.replace('<td class="actions">', '<td class="actions" data-label="操作">')}
         </tr>`;
@@ -107,6 +107,8 @@ function renderAll(list) {
   sortConferences();
   renderTable('domestic', allConferences, 'tbody-domestic');
   renderTable('international', allConferences, 'tbody-international');
+  // Adjust layout when table content causes overflow
+  checkTableOverflow();
 }
 
 async function loadConferences() {
@@ -145,6 +147,50 @@ function connectSocket() {
   });
   return socket;
 }
+
+// Detect if any table's content overflows its container and switch to stacked layout
+function debounce(fn, wait) {
+  let t = null;
+  return (...args) => {
+    if (t) clearTimeout(t);
+    t = setTimeout(() => fn(...args), wait);
+  };
+}
+
+function checkTableOverflow() {
+  try {
+    const wraps = Array.from(document.querySelectorAll('.table-wrap'));
+    let shouldStack = false;
+    wraps.forEach((w) => {
+      const table = w.querySelector('table.data');
+      if (!table) return;
+      // Prefer per-row measurement: if any data row's scrollWidth exceeds the wrap width,
+      // that row cannot be displayed horizontally without overflow -> switch to stacked.
+      const tbody = table.tBodies && table.tBodies[0];
+      if (tbody && tbody.rows && tbody.rows.length) {
+        for (let i = 0; i < tbody.rows.length; i++) {
+          const row = tbody.rows[i];
+          // Some environments may report small rounding differences, allow 1px tolerance
+          if (row.scrollWidth > w.clientWidth + 1) {
+            shouldStack = true;
+            break;
+          }
+        }
+      } else {
+        // Fallback to table-level check
+        if (table.scrollWidth > w.clientWidth + 1) {
+          shouldStack = true;
+        }
+      }
+    });
+    if (shouldStack) document.body.classList.add('stacked-table');
+    else document.body.classList.remove('stacked-table');
+  } catch (e) {
+    // ignore errors in detection
+  }
+}
+
+window.addEventListener('resize', debounce(checkTableOverflow, 150));
 
 function setupSorting() {
   const ths = Array.from(document.querySelectorAll('table.data thead th[data-sort-key]'));
