@@ -100,8 +100,80 @@ function sortConferences() {
   });
 }
 
+function detectMissingNextYear(list) {
+  if (!Array.isArray(list) || !list.length) return [];
+  // Helper: normalization for name-based grouping
+  function normalizeName(name) {
+    if (!name) return '';
+    return name
+      .toLowerCase()
+      .replace(/\(\s*\d{4}\s*\)/g, '') // remove year in parentheses
+      .replace(/\d{4}/g, '') // remove stray years
+      .replace(/[\s　]+/g, ' ')
+      .trim();
+  }
+
+  // Build groups by tag if present, else normalized name
+  const groups = new Map();
+  list.forEach((c) => {
+    const key = (c.tag && String(c.tag).trim()) || normalizeName(c.name || '');
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(c);
+  });
+
+  const results = [];
+  groups.forEach((items, key) => {
+    // If key is empty, skip
+    if (!key) return;
+    // Sort by startDate (fallback to endDate), earliest first
+    items.sort((a, b) => {
+      const da = (a.startDate || a.endDate || '').slice(0, 10) || '';
+      const db = (b.startDate || b.endDate || '').slice(0, 10) || '';
+      if (!da && !db) return 0;
+      if (!da) return -1;
+      if (!db) return 1;
+      return da < db ? -1 : da > db ? 1 : 0;
+    });
+
+    // For each hidden item, check if there exists a later item (by startDate) in the group
+    items.forEach((it) => {
+      if (!it.isHidden) return; // only consider hidden conferences
+      const itDate = (it.startDate || it.endDate || '').slice(0, 10) || '';
+      const hasLater = items.some((x) => {
+        if (x.id === it.id) return false;
+        const xDate = (x.startDate || x.endDate || '').slice(0, 10) || '';
+        if (!xDate) return false;
+        if (!itDate) return true; // hidden old without date, but there's some other entry with date -> consider as next exists
+        return xDate > itDate;
+      });
+      if (!hasLater) results.push(it);
+    });
+  });
+
+  return results;
+}
+
 function renderAll(list) {
-  // Filter out conferences that have already ended
+  // Detect hidden conferences lacking next-year entries (only meaningful for editors)
+  try {
+    const missing = currentUser ? detectMissingNextYear(list || []) : [];
+    const noticeEl = document.getElementById('missing-next-notice');
+    if (noticeEl) {
+      if (missing.length) {
+        noticeEl.hidden = false;
+        noticeEl.innerHTML = `非表示の学会で次年度情報が未登録: <strong>${missing.length}</strong> 件。` +
+          ` <span class="hint">${missing.map((m) => m.name).slice(0,5).map((n)=>escapeHtml(n)).join(', ')}${missing.length>5? '…':''}</span>` +
+          ` <a href="/admin" class="hint">管理画面で確認</a>`;
+      } else {
+        noticeEl.hidden = true;
+        noticeEl.innerHTML = '';
+      }
+    }
+  } catch (e) {
+    console.error('detect missing next-year failed', e);
+  }
+
+  // Filter out conferences that have already ended for main listing
   allConferences = (list || []).filter((c) => !isEnded(c));
   // Apply sorting if set
   sortConferences();
@@ -272,6 +344,7 @@ function openModal(conference) {
     form.elements.startDate.value = (conference.startDate || '').slice(0, 10);
     form.elements.endDate.value = (conference.endDate || '').slice(0, 10);
     form.elements.location.value = conference.location || '';
+    if (form.elements.tag) form.elements.tag.value = conference.tag || '';
   }
 
   backdrop.hidden = false;
@@ -292,6 +365,7 @@ function formToBody(form) {
     startDate: form.elements.startDate.value || null,
     endDate: form.elements.endDate.value || null,
     website: form.elements.website ? form.elements.website.value.trim() : '',
+    tag: form.elements.tag ? form.elements.tag.value.trim() : '',
     location: form.elements.location.value.trim(),
   };
 }

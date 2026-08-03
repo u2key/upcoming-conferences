@@ -13,6 +13,7 @@ const COLUMNS = [
   'start_date',
   'end_date',
   'website',
+  'tag',
   'location',
   'is_hidden',
   'created_by',
@@ -33,6 +34,7 @@ function toPublic(row) {
     startDate: row.start_date,
     endDate: row.end_date,
     website: row.website || '',
+    tag: row.tag || '',
     location: row.location,
     isHidden: !!row.is_hidden,
     createdBy: row.created_by,
@@ -52,6 +54,7 @@ function rowFromInput(data) {
     start_date: data.startDate || data.start_date || null,
     end_date: data.endDate || data.end_date || null,
     website: (data.website || data.website || '').trim(),
+    tag: (data.tag || data.tag || '').trim(),
     location: (data.location || '').trim(),
   };
 }
@@ -121,8 +124,8 @@ function create(data, userId) {
     .prepare(
       `INSERT INTO conferences
          (name, type, application_deadline, abstract_deadline, manuscript_deadline,
-          start_date, end_date, website, location, is_hidden, created_by, updated_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          start_date, end_date, website, tag, location, is_hidden, created_by, updated_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       fields.name,
@@ -133,6 +136,7 @@ function create(data, userId) {
       fields.start_date,
       fields.end_date,
       fields.website,
+      fields.tag,
       fields.location,
       0,
       userId,
@@ -172,7 +176,7 @@ function update(id, data, userId) {
     `UPDATE conferences SET
        name = ?, type = ?,
        application_deadline = ?, abstract_deadline = ?, manuscript_deadline = ?,
-     start_date = ?, end_date = ?, website = ?, location = ?,
+     start_date = ?, end_date = ?, website = ?, tag = ?, location = ?,
        updated_by = ?, updated_at = datetime('now')
      WHERE id = ?`
   ).run(
@@ -184,6 +188,7 @@ function update(id, data, userId) {
     fields.start_date,
     fields.end_date,
     fields.website,
+    fields.tag,
     fields.location,
     userId,
     id
@@ -249,7 +254,7 @@ function restoreFromSnapshot(snapshot, userId) {
       `UPDATE conferences SET
          name = ?, type = ?,
          application_deadline = ?, abstract_deadline = ?, manuscript_deadline = ?,
-       start_date = ?, end_date = ?, website = ?, location = ?, is_hidden = ?,
+       start_date = ?, end_date = ?, website = ?, tag = ?, location = ?, is_hidden = ?,
          updated_by = ?, updated_at = datetime('now')
        WHERE id = ?`
     ).run(
@@ -261,6 +266,7 @@ function restoreFromSnapshot(snapshot, userId) {
       snapshot.start_date,
       snapshot.end_date,
     snapshot.website || '',
+    snapshot.tag || '',
     snapshot.location || '',
     snapshot.is_hidden ? 1 : 0,
     userId,
@@ -271,8 +277,8 @@ function restoreFromSnapshot(snapshot, userId) {
     db.prepare(
       `INSERT INTO conferences
          (id, name, type, application_deadline, abstract_deadline, manuscript_deadline,
-          start_date, end_date, website, location, is_hidden, created_by, updated_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          start_date, end_date, website, tag, location, is_hidden, created_by, updated_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       snapshot.id,
       snapshot.name,
@@ -283,6 +289,7 @@ function restoreFromSnapshot(snapshot, userId) {
       snapshot.start_date,
       snapshot.end_date,
       snapshot.website || '',
+      snapshot.tag || '',
       snapshot.location || '',
       snapshot.is_hidden ? 1 : 0,
       snapshot.created_by || userId,

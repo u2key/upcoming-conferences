@@ -32,6 +32,8 @@
       </select>
     </div>
 
+    <div id="missing-next-notice" class="flash flash-ok" hidden style="margin-top:0.75rem;display:block"></div>
+
     <div class="live-status disconnected" id="live-status">
       <span class="live-dot"></span>
       <span class="live-label">接続確認中…</span>
@@ -121,6 +123,11 @@
           <div class="form-field">
             <label for="f-website">ウェブサイト（URL）</label>
             <input id="f-website" name="website" type="url" placeholder="https://..." maxlength="500" />
+          </div>
+          <div class="form-field">
+            <label for="f-tag">タグ（識別子、任意）</label>
+            <input id="f-tag" name="tag" type="text" placeholder="例: icml" maxlength="100" />
+            <div class="hint">同一学会を識別するための一意な識別子（任意）。表記ゆれが多い場合は指定してください。</div>
           </div>
           <div class="form-field">
             <label for="f-app">申込期限</label>
