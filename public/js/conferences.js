@@ -434,8 +434,27 @@ function setupEditorUI() {
     // Always attach handler: redirect viewers to login, editors open the modal
     addBtn1.addEventListener('click', () => {
       if (!currentUser) {
-        // Not logged in -> go to login page
-        location.href = '/login.html';
+        // Not logged in -> try opening login in a new tab (works when parent allows popups),
+        // otherwise try to navigate top window, otherwise fallback to iframe navigation.
+        const loginUrl = '/login.html';
+        let opened = null;
+        try {
+          opened = window.open(loginUrl, '_blank');
+        } catch (e) {
+          opened = null;
+        }
+        if (opened) return;
+        // Try top navigation if same-origin or allowed
+        try {
+          if (window.top && window.top !== window) {
+            window.top.location.href = loginUrl;
+            return;
+          }
+        } catch (e) {
+          // ignore cross-origin access error
+        }
+        // Last resort: navigate inside iframe
+        location.href = loginUrl;
         return;
       }
       openModal(null);
@@ -447,8 +466,21 @@ function setupEditorUI() {
     // Always attach handler: redirect viewers to login, editors open the modal
     addBtn2.addEventListener('click', () => {
       if (!currentUser) {
-        // Not logged in -> go to login page
-        location.href = '/login.html';
+        const loginUrl = '/login.html';
+        let opened = null;
+        try {
+          opened = window.open(loginUrl, '_blank');
+        } catch (e) {
+          opened = null;
+        }
+        if (opened) return;
+        try {
+          if (window.top && window.top !== window) {
+            window.top.location.href = loginUrl;
+            return;
+          }
+        } catch (e) {}
+        location.href = loginUrl;
         return;
       }
       openModal(null);
