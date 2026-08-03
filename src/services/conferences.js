@@ -300,6 +300,16 @@ function restoreFromSnapshot(snapshot, userId) {
   return toPublic(getRaw(snapshot.id));
 }
 
+// Permanently delete a conference and return the deleted public data, or null if not found
+function deleteById(id) {
+  const db = getDb();
+  const existing = getRaw(id);
+  if (!existing) return null;
+  db.prepare('DELETE FROM conferences WHERE id = ?').run(id);
+  // skipping audit log to avoid adding new action types
+  return toPublic(existing);
+}
+
 module.exports = {
   toPublic,
   getById,
@@ -309,5 +319,6 @@ module.exports = {
   update,
   setHidden,
   restoreFromSnapshot,
+  deleteById,
   COLUMNS,
 };

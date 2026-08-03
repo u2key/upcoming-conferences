@@ -7,6 +7,7 @@ if (window.self !== window.top) {
       link.target = '_blank';
     }
   });
+  document.getElementById("site-header").style.display = 'none';
 }
 
 function sendWindowSize() {

@@ -100,77 +100,90 @@ function sortConferences() {
   });
 }
 
-function detectMissingNextYear(list) {
-  if (!Array.isArray(list) || !list.length) return [];
-  // Helper: normalization for name-based grouping
-  function normalizeName(name) {
-    if (!name) return '';
-    return name
-      .toLowerCase()
-      .replace(/\(\s*\d{4}\s*\)/g, '') // remove year in parentheses
-      .replace(/\d{4}/g, '') // remove stray years
-      .replace(/[\s　]+/g, ' ')
-      .trim();
-  }
+function isNonVisible(conf) {
+  return !!(conf.isHidden || isEnded(conf));
+}
 
-  // Build groups by tag if present, else normalized name
+function detectAllHiddenTags(list) {
+  // Find tags where all records are non-visible (isHidden or ended)
+  if (!Array.isArray(list) || !list.length) return [];
   const groups = new Map();
   list.forEach((c) => {
-    const key = (c.tag && String(c.tag).trim()) || normalizeName(c.name || '');
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(c);
+    const t = c.tag && String(c.tag).trim();
+    if (!t) return;
+    if (!groups.has(t)) groups.set(t, []);
+    groups.get(t).push(c);
   });
 
   const results = [];
-  groups.forEach((items, key) => {
-    // If key is empty, skip
-    if (!key) return;
-    // Sort by startDate (fallback to endDate), earliest first
-    items.sort((a, b) => {
-      const da = (a.startDate || a.endDate || '').slice(0, 10) || '';
-      const db = (b.startDate || b.endDate || '').slice(0, 10) || '';
-      if (!da && !db) return 0;
-      if (!da) return -1;
-      if (!db) return 1;
-      return da < db ? -1 : da > db ? 1 : 0;
-    });
-
-    // For each hidden item, check if there exists a later item (by startDate) in the group
-    items.forEach((it) => {
-      if (!it.isHidden) return; // only consider hidden conferences
-      const itDate = (it.startDate || it.endDate || '').slice(0, 10) || '';
-      const hasLater = items.some((x) => {
-        if (x.id === it.id) return false;
-        const xDate = (x.startDate || x.endDate || '').slice(0, 10) || '';
-        if (!xDate) return false;
-        if (!itDate) return true; // hidden old without date, but there's some other entry with date -> consider as next exists
-        return xDate > itDate;
-      });
-      if (!hasLater) results.push(it);
-    });
+  groups.forEach((items, tag) => {
+    // If every item is non-visible, report
+    const allHidden = items.every((it) => isNonVisible(it));
+    if (!allHidden) return;
+    // Find latest item by date (startDate or endDate)
+    const latest = items
+      .slice()
+      .sort((a, b) => {
+        const da = (a.startDate || a.endDate || '').slice(0, 10) || '';
+        const db = (b.startDate || b.endDate || '').slice(0, 10) || '';
+        if (!da && !db) return 0;
+        if (!da) return 1;
+        if (!db) return -1;
+        return da < db ? -1 : da > db ? 1 : 0;
+      })
+      .slice(-1)[0];
+    results.push({ tag, latest });
   });
-
   return results;
 }
 
 function renderAll(list) {
-  // Detect hidden conferences lacking next-year entries (only meaningful for editors)
+  // Detect tags where all records are non-visible and notify editors/admins
   try {
-    const missing = currentUser ? detectMissingNextYear(list || []) : [];
+    const missingTags = currentUser ? detectAllHiddenTags(list || []) : [];
     const noticeEl = document.getElementById('missing-next-notice');
     if (noticeEl) {
-      if (missing.length) {
+      if (missingTags.length) {
         noticeEl.hidden = false;
-        noticeEl.innerHTML = `非表示の学会で次年度情報が未登録: <strong>${missing.length}</strong> 件。` +
-          ` <span class="hint">${missing.map((m) => m.name).slice(0,5).map((n)=>escapeHtml(n)).join(', ')}${missing.length>5? '…':''}</span>` +
-          ` <a href="/admin" class="hint">管理画面で確認</a>`;
+        const examples = missingTags.slice(0, 5).map((m) => escapeHtml(m.tag)).join(', ');
+        noticeEl.innerHTML = `未登録（全記録非表示）の学会タグ: <strong>${missingTags.length}</strong> 件。` +
+          ` <span class="hint">${examples}${missingTags.length>5? '…':''}</span>` +
+          ` <button id="btn-open-missing-tags" class="btn btn-sm">過去の学会情報を見る</button>`;
+        // attach handler
+        setTimeout(() => {
+          const btn = document.getElementById('btn-open-missing-tags');
+          if (btn) {
+            btn.addEventListener('click', () => {
+              // Open modal listing all missing tags and allow per-tag drilldown
+              const backdrop = document.getElementById('hidden-modal-backdrop');
+              const body = document.getElementById('hidden-modal-body');
+              body.innerHTML = '<p class="hint">読み込み中…</p>';
+              backdrop.hidden = false;
+              // render a table grouped by tag
+              const rows = missingTags.map((m) => {
+                const latest = m.latest;
+                const name = latest && latest.website ? `<a href="${escapeHtml(latest.website)}" target="_blank" rel="noopener noreferrer">${escapeHtml(latest.name)}</a>` : escapeHtml(latest && latest.name || m.tag);
+                const dates = escapeHtml((latest && [latest.startDate, latest.endDate].filter(Boolean).join(' ~ ')) || '日付未設定');
+                return `<tr data-tag="${escapeHtml(m.tag)}"><td>${name}</td><td>${escapeHtml(m.tag)}</td><td>${dates}</td><td><button class="btn btn-sm" data-action="view-tag" data-tag="${escapeHtml(m.tag)}">過去の記録を見る</button></td></tr>`;
+              }).join('\n');
+              body.innerHTML = `
+                <div class="hidden-table-wrap">
+                  <table class="hidden-list">
+                    <thead><tr><th>代表名</th><th>タグ</th><th>日付</th><th>操作</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                  </table>
+                </div>
+              `;
+            });
+          }
+        }, 10);
       } else {
         noticeEl.hidden = true;
         noticeEl.innerHTML = '';
       }
     }
   } catch (e) {
-    console.error('detect missing next-year failed', e);
+    console.error('detect missing tags failed', e);
   }
 
   // Filter out conferences that have already ended for main listing
@@ -184,7 +197,8 @@ function renderAll(list) {
 }
 
 async function loadConferences() {
-  const includeHidden = currentUser ? '1' : '0';
+  // Only request hidden data when current user is admin
+  const includeHidden = currentUser && currentUser.isAdmin ? '1' : '0';
   const data = await api(`/api/conferences?includeHidden=${includeHidden}`);
   renderAll(data.conferences);
 }
@@ -522,10 +536,10 @@ function setupEditorUI() {
       const action = btn.dataset.action;
       const id = parseInt(btn.dataset.id, 10);
       if (action === 'edit') {
-        // Close hidden modal and open edit modal
+        // Only admins can edit
+        if (!currentUser || !currentUser.isAdmin) return alert('編集は管理者のみ行えます');
         document.getElementById('hidden-modal-backdrop').hidden = true;
         const conf = allConferences.find((c) => c.id === id);
-        // If not found in current allConferences, reload and open after fetch
         if (conf) {
           openModal(conf);
         } else {
@@ -534,15 +548,51 @@ function setupEditorUI() {
           }).catch((err) => alert(err.message));
         }
       } else if (action === 'unhide') {
-        if (!confirm('この学会を再表示しますか？（必要であれば日付を更新してください）')) return;
-        api(`/api/conferences/${id}/unhide`, { method: 'POST' })
-          .then(() => {
-            // refresh both hidden modal and main list
-            viewHiddenBtn.click();
-            loadConferences();
-            alert('再表示しました（必要なら日付を編集してください）。');
-          })
-          .catch((err) => alert(err.message));
+        // Editors can unhide only if not ended; admins can unhide always
+        api(`/api/conferences/${id}`).then((res) => {
+          const conf = res.conference;
+          const ended = isEnded(conf);
+          if (!currentUser || (!currentUser.isAdmin && ended)) {
+            return alert('この学会は終了しているため、編集者は再表示できません。管理者に依頼してください。');
+          }
+          if (!confirm('この学会を再表示しますか？（必要であれば日付を更新してください）')) return;
+          api(`/api/conferences/${id}/unhide`, { method: 'POST' })
+            .then(() => {
+              // refresh both hidden modal and main list
+              viewHiddenBtn.click();
+              loadConferences();
+              alert('再表示しました（必要なら日付を編集してください）。');
+            })
+            .catch((err) => alert(err.message));
+        }).catch((err) => alert(err.message));
+      } else if (action === 'duplicate') {
+        // Duplicate: open modal prefilled but clear id for creating new record
+        document.getElementById('hidden-modal-backdrop').hidden = true;
+        api(`/api/conferences/${id}`).then((res) => {
+          const conf = res.conference;
+          if (conf) {
+            openModal(conf);
+            // clear id to force create
+            const form = document.getElementById('conf-form');
+            form.elements.id.value = '';
+            document.getElementById('modal-title').textContent = '学会情報の複製（新規作成）';
+          }
+        }).catch((err) => alert(err.message));
+      } else if (action === 'view-tag') {
+        const tag = btn.dataset.tag;
+        // render past records for this tag
+        const backdrop = document.getElementById('hidden-modal-backdrop');
+        const body = document.getElementById('hidden-modal-body');
+        body.innerHTML = '<p class="hint">読み込み中…</p>';
+        api(`/api/conferences?includeHidden=1`).then((data) => {
+          const items = (data.conferences || []).filter((c) => (c.tag || '') === tag);
+          if (!items.length) {
+            body.innerHTML = '<p class="hint">該当する過去の記録はありません。</p>';
+            return;
+          }
+          const rows = items.map((c) => `<tr><td>${c.website?`<a href="${escapeHtml(c.website)}" target="_blank">${escapeHtml(c.name)}</a>`:escapeHtml(c.name)}</td><td>${escapeHtml(c.tag||'')}</td><td>${escapeHtml([c.startDate,c.endDate].filter(Boolean).join(' ~ ')||'日付未設定')}</td><td><button class="btn btn-sm" data-action="duplicate" data-id="${c.id}">複製して新規作成</button></td></tr>`).join('');
+          body.innerHTML = `\n            <div class="hidden-table-wrap">\n              <table class="hidden-list">\n                <thead><tr><th>学会名</th><th>タグ</th><th>日付</th><th>操作</th></tr></thead>\n                <tbody>${rows}</tbody>\n              </table>\n            </div>\n          `;
+        }).catch((err) => { body.innerHTML = `<p class="flash flash-error">読み込みに失敗しました: ${escapeHtml(err.message)}</p>`; });
       }
     });
   }
