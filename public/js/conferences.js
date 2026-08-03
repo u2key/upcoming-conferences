@@ -344,6 +344,7 @@ function openModal(conference) {
     form.elements.startDate.value = (conference.startDate || '').slice(0, 10);
     form.elements.endDate.value = (conference.endDate || '').slice(0, 10);
     form.elements.location.value = conference.location || '';
+    if (form.elements.website) form.elements.website.value = conference.website || '';
     if (form.elements.tag) form.elements.tag.value = conference.tag || '';
   }
 
