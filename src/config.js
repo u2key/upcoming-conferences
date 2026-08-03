@@ -24,6 +24,10 @@ module.exports = {
     from: process.env.MAIL_FROM || 'noreply@upcoming-conferences.local',
   },
   appBaseUrl: process.env.APP_BASE_URL || 'https://confs.ourslab.jp',
+  /** Whether to issue cross-site cookies (SameSite=None; Secure). Use in environments that require cookies in iframes. */
+  crossSiteCookies: process.env.CROSS_SITE_COOKIES === 'true',
+  /** Whether to append Partitioned attribute to cookies (CHIPS). Not universally supported; enable if desired. */
+  cookiePartitioned: process.env.COOKIE_PARTITIONED === 'true',
   /** Operation logs older than this many days are purged. */
   logRetentionDays: 90,
 };

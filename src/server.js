@@ -44,12 +44,35 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      sameSite: 'lax',
-      secure: config.nodeEnv === 'production',
+      // Allow configuring cross-site cookies via env. When enabled, SameSite=None and Secure are required.
+      sameSite: config.crossSiteCookies ? 'none' : 'lax',
+      secure: config.crossSiteCookies ? true : config.nodeEnv === 'production',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   })
 );
+
+// Optionally append Partitioned attribute to Set-Cookie headers for CHIPS support.
+if (config.cookiePartitioned) {
+  app.use((req, res, next) => {
+    const origSetHeader = res.setHeader.bind(res);
+    res.setHeader = (name, value) => {
+      if (String(name).toLowerCase() === 'set-cookie' && value) {
+        let cookies = Array.isArray(value) ? value.slice() : [value];
+        cookies = cookies.map((c) => {
+          // If Partitioned already present, leave unchanged
+          if (/\bPartitioned\b/i.test(c)) return c;
+          // Append Partitioned token
+          return `${c}; Partitioned`;
+        });
+        return origSetHeader('Set-Cookie', cookies);
+      }
+      return origSetHeader(name, value);
+    };
+    next();
+  });
+}
+
 app.use(loadUser);
 
 // API routes

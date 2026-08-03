@@ -1,5 +1,16 @@
 (function(){ 'use strict';
 
+function sendWindowSize() {
+  const height = document.documentElement.scrollHeight;
+  const width = document.documentElement.scrollWidth;
+  window.parent.postMessage({ frameHeight: height }, '*');
+}
+window.addEventListener("load", sendWindowSize);
+window.addEventListener("resize", sendWindowSize);
+if ('ResizeObserver' in window) {
+  new ResizeObserver(sendWindowSize).observe(document.body);
+}
+
 /** Format ISO/date string for display (YYYY-MM-DD or empty). */
 function formatDate(value) {
   if (!value) return '—';
