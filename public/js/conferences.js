@@ -460,20 +460,38 @@ function setupEditorUI() {
         if (!hidden.length) {
           body.innerHTML = '<p class="hint">非表示の学会はありません。</p>';
         } else {
-          body.innerHTML = '<ul class="plain-list" style="padding-left:1rem"></ul>';
-          const ul = body.querySelector('ul');
-          hidden.forEach((c) => {
-            const w = c.website ? ` <a href="${escapeHtml(c.website)}" target="_blank" rel="noopener noreferrer">↗</a>` : '';
-            const dates = [c.startDate, c.endDate].filter(Boolean).join(' ~ ');
-            const li = document.createElement('li');
-            li.innerHTML = `<strong>${escapeHtml(c.name)}</strong> ${escapeHtml(c.tag||'')} — ${escapeHtml(dates||'日付未設定')} ${w}`;
-            // Add action buttons for admins: Edit and Unhide
-            const actions = document.createElement('span');
-            actions.style.marginLeft = '0.6rem';
-            actions.innerHTML = ` <button class="btn btn-sm" data-action="edit" data-id="${c.id}">編集</button> <button class="btn btn-secondary btn-sm" data-action="unhide" data-id="${c.id}">再表示</button>`;
-            li.appendChild(actions);
-            ul.appendChild(li);
-          });
+          // Render a compact table for easier scanning and action
+          const rows = hidden.map((c) => {
+            const name = c.website
+              ? `<a href="${escapeHtml(c.website)}" target="_blank" rel="noopener noreferrer">${escapeHtml(c.name)}</a>`
+              : `${escapeHtml(c.name)}`;
+            const tag = escapeHtml(c.tag || '');
+            const dates = escapeHtml([c.startDate, c.endDate].filter(Boolean).join(' ~ ') || '日付未設定');
+            const loc = escapeHtml(c.location || '—');
+            return `<tr data-id="${c.id}">
+              <td class="name">${name}</td>
+              <td class="tag">${tag}</td>
+              <td class="dates">${dates}</td>
+              <td class="loc">${loc}</td>
+              <td class="actions">
+                <button class="btn btn-sm" data-action="edit" data-id="${c.id}">編集</button>
+                <button class="btn btn-secondary btn-sm" data-action="unhide" data-id="${c.id}">再表示</button>
+              </td>
+            </tr>`;
+          }).join('\n');
+
+          body.innerHTML = `
+            <div class="hidden-table-wrap">
+              <table class="hidden-list">
+                <thead>
+                  <tr><th>学会名</th><th>タグ</th><th>日付</th><th>場所</th><th>操作</th></tr>
+                </thead>
+                <tbody>
+                  ${rows}
+                </tbody>
+              </table>
+            </div>
+          `;
         }
       } catch (err) {
         body.innerHTML = `<p class="flash flash-error">読み込みに失敗しました: ${escapeHtml(err.message)}</p>`;

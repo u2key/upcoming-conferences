@@ -613,4 +613,16 @@ table.data thead th[data-sort-key] {
   table.data td.actions { display: flex; gap: 0.5rem; justify-content: flex-end; min-width: 120px; }
   table.data td .hint { margin-left: 0.5rem; }
   .table-wrap { overflow-x: visible; }
+
+  /* Hidden modal table styling */
+  .hidden-table-wrap { overflow-x: auto; }
+  table.hidden-list { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+  table.hidden-list th, table.hidden-list td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+  table.hidden-list th { color: var(--muted); font-weight: 700; font-size: 0.8rem; }
+  table.hidden-list td.actions { white-space: nowrap; }
+  table.hidden-list tr:hover td { background: #fbfdff; }
+  @media (max-width:640px) {
+    table.hidden-list th, table.hidden-list td { padding: 0.45rem 0.5rem; font-size: 0.9rem; }
+    table.hidden-list td.actions { display:flex; gap:0.4rem; }
+  }
 }
