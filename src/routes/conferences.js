@@ -31,9 +31,8 @@ router.get('/', (req, res) => {
     if (type && type !== 'domestic' && type !== 'international') {
       return res.status(400).json({ error: 'type は domestic または international です' });
     }
-    // Approved users can request includeHidden=1
-    const includeHidden =
-      req.user && req.query.includeHidden === '1' ? true : false;
+    // Only admin users may request hidden conferences
+    const includeHidden = req.user && req.user.isAdmin && req.query.includeHidden === '1' ? true : false;
     const list = conferences.list({ type, includeHidden });
     res.json({ conferences: list });
   } catch (err) {

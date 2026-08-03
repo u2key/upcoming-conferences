@@ -445,7 +445,7 @@ function setupEditorUI() {
 
   if (viewHiddenBtn) {
     viewHiddenBtn.addEventListener('click', async () => {
-      if (!currentUser) {
+      if (!currentUser || !currentUser.isAdmin) {
         location.href = '/login.html';
         return;
       }
@@ -455,7 +455,8 @@ function setupEditorUI() {
       backdrop.hidden = false;
       try {
         const data = await api('/api/conferences?includeHidden=1');
-        const hidden = (data.conferences || []).filter((c) => c.isHidden);
+        // Consider both explicitly hidden and automatically hidden (ended) as "hidden"
+        const hidden = (data.conferences || []).filter((c) => c.isHidden || isEnded(c));
         if (!hidden.length) {
           body.innerHTML = '<p class="hint">非表示の学会はありません。</p>';
         } else {
@@ -466,6 +467,11 @@ function setupEditorUI() {
             const dates = [c.startDate, c.endDate].filter(Boolean).join(' ~ ');
             const li = document.createElement('li');
             li.innerHTML = `<strong>${escapeHtml(c.name)}</strong> ${escapeHtml(c.tag||'')} — ${escapeHtml(dates||'日付未設定')} ${w}`;
+            // Add action buttons for admins: Edit and Unhide
+            const actions = document.createElement('span');
+            actions.style.marginLeft = '0.6rem';
+            actions.innerHTML = ` <button class="btn btn-sm" data-action="edit" data-id="${c.id}">編集</button> <button class="btn btn-secondary btn-sm" data-action="unhide" data-id="${c.id}">再表示</button>`;
+            li.appendChild(actions);
             ul.appendChild(li);
           });
         }
@@ -473,7 +479,7 @@ function setupEditorUI() {
         body.innerHTML = `<p class="flash flash-error">読み込みに失敗しました: ${escapeHtml(err.message)}</p>`;
       }
     });
-    viewHiddenBtn.hidden = !currentUser;
+    viewHiddenBtn.hidden = !(currentUser && currentUser.isAdmin);
   }
 
   if (currentUser) {
@@ -488,6 +494,40 @@ function setupEditorUI() {
   if (closeHidden) closeHidden.addEventListener('click', () => {
     document.getElementById('hidden-modal-backdrop').hidden = true;
   });
+
+  // Delegate click handling inside hidden modal for edit/unhide actions
+  const hiddenBody = document.getElementById('hidden-modal-body');
+  if (hiddenBody) {
+    hiddenBody.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      const action = btn.dataset.action;
+      const id = parseInt(btn.dataset.id, 10);
+      if (action === 'edit') {
+        // Close hidden modal and open edit modal
+        document.getElementById('hidden-modal-backdrop').hidden = true;
+        const conf = allConferences.find((c) => c.id === id);
+        // If not found in current allConferences, reload and open after fetch
+        if (conf) {
+          openModal(conf);
+        } else {
+          api(`/api/conferences/${id}`).then((res) => {
+            if (res && res.conference) openModal(res.conference);
+          }).catch((err) => alert(err.message));
+        }
+      } else if (action === 'unhide') {
+        if (!confirm('この学会を再表示しますか？（必要であれば日付を更新してください）')) return;
+        api(`/api/conferences/${id}/unhide`, { method: 'POST' })
+          .then(() => {
+            // refresh both hidden modal and main list
+            viewHiddenBtn.click();
+            loadConferences();
+            alert('再表示しました（必要なら日付を編集してください）。');
+          })
+          .catch((err) => alert(err.message));
+      }
+    });
+  }
 
   // Always attach table click handlers so viewers can interact safely (no edit buttons shown)
   const tbodyDom = document.getElementById('tbody-domestic');
