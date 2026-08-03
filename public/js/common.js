@@ -1,5 +1,14 @@
 (function(){ 'use strict';
 
+if (window.self !== window.top) {
+  document.addEventListener('click', function(e) {
+    const link = e.target.closest('a');
+    if (link && !link.hasAttribute('target')) {
+      link.target = '_blank';
+    }
+  });
+}
+
 function sendWindowSize() {
   const height = document.documentElement.scrollHeight;
   const width = document.documentElement.scrollWidth;
