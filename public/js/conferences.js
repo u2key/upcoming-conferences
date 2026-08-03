@@ -415,6 +415,7 @@ function onTableClick(e) {
 function setupEditorUI() {
   const addBtn1 = document.getElementById('btn-add-conference1');
   const addBtn2 = document.getElementById('btn-add-conference2');
+  const viewHiddenBtn = document.getElementById('btn-view-hidden');
   if (addBtn1) {
     // Always attach handler: redirect viewers to login, editors open the modal
     addBtn1.addEventListener('click', () => {
@@ -442,6 +443,39 @@ function setupEditorUI() {
     addBtn2.hidden = !currentUser;
   }
 
+  if (viewHiddenBtn) {
+    viewHiddenBtn.addEventListener('click', async () => {
+      if (!currentUser) {
+        location.href = '/login.html';
+        return;
+      }
+      const backdrop = document.getElementById('hidden-modal-backdrop');
+      const body = document.getElementById('hidden-modal-body');
+      body.innerHTML = '<p class="hint">読み込み中…</p>';
+      backdrop.hidden = false;
+      try {
+        const data = await api('/api/conferences?includeHidden=1');
+        const hidden = (data.conferences || []).filter((c) => c.isHidden);
+        if (!hidden.length) {
+          body.innerHTML = '<p class="hint">非表示の学会はありません。</p>';
+        } else {
+          body.innerHTML = '<ul class="plain-list" style="padding-left:1rem"></ul>';
+          const ul = body.querySelector('ul');
+          hidden.forEach((c) => {
+            const w = c.website ? ` <a href="${escapeHtml(c.website)}" target="_blank" rel="noopener noreferrer">↗</a>` : '';
+            const dates = [c.startDate, c.endDate].filter(Boolean).join(' ~ ');
+            const li = document.createElement('li');
+            li.innerHTML = `<strong>${escapeHtml(c.name)}</strong> ${escapeHtml(c.tag||'')} — ${escapeHtml(dates||'日付未設定')} ${w}`;
+            ul.appendChild(li);
+          });
+        }
+      } catch (err) {
+        body.innerHTML = `<p class="flash flash-error">読み込みに失敗しました: ${escapeHtml(err.message)}</p>`;
+      }
+    });
+    viewHiddenBtn.hidden = !currentUser;
+  }
+
   if (currentUser) {
     document.getElementById('conf-form').addEventListener('submit', onSubmitForm);
     document.getElementById('btn-cancel-modal').addEventListener('click', closeModal);
@@ -449,6 +483,11 @@ function setupEditorUI() {
       if (e.target.id === 'modal-backdrop') closeModal();
     });
   }
+
+  const closeHidden = document.getElementById('btn-close-hidden');
+  if (closeHidden) closeHidden.addEventListener('click', () => {
+    document.getElementById('hidden-modal-backdrop').hidden = true;
+  });
 
   // Always attach table click handlers so viewers can interact safely (no edit buttons shown)
   const tbodyDom = document.getElementById('tbody-domestic');

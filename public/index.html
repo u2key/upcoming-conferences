@@ -30,6 +30,7 @@
         <option value="startDate">開始日</option>
         <option value="endDate">終了日</option>
       </select>
+      <button id="btn-view-hidden" class="btn btn-secondary btn-sm" hidden style="margin-left:0.6rem">非表示学会を表示</button>
     </div>
 
     <div id="missing-next-notice" class="flash flash-ok" hidden style="margin-top:0.75rem;display:block"></div>
@@ -156,6 +157,19 @@
           <button type="button" class="btn btn-secondary" id="btn-cancel-modal">キャンセル</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Hidden conferences modal (view-only) -->
+  <div class="modal-backdrop" id="hidden-modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="hidden-modal-title">
+      <h3 id="hidden-modal-title">非表示学会一覧（閲覧のみ）</h3>
+      <div id="hidden-modal-body">
+        <p class="hint">読み込み中…</p>
+      </div>
+      <div style="margin-top:1rem;text-align:right">
+        <button type="button" class="btn btn-secondary" id="btn-close-hidden">閉じる</button>
+      </div>
     </div>
   </div>
 
