@@ -6,7 +6,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const rootDir = path.join(__dirname, '..');
 
 module.exports = {
-  port: parseInt(process.env.PORT || '3000', 10),
+  port: parseInt(process.env.PORT || '33330', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
   sessionSecret: process.env.SESSION_SECRET || 'dev-only-session-secret-change-me',
   dbPath: process.env.DB_PATH || path.join(rootDir, 'data', 'conferences.db'),
@@ -23,7 +23,7 @@ module.exports = {
     pass: process.env.SMTP_PASS || '',
     from: process.env.MAIL_FROM || 'noreply@upcoming-conferences.local',
   },
-  appBaseUrl: process.env.APP_BASE_URL || 'http://localhost:3000',
+  appBaseUrl: process.env.APP_BASE_URL || 'https://confs.ourslab.jp',
   /** Operation logs older than this many days are purged. */
   logRetentionDays: 90,
 };
