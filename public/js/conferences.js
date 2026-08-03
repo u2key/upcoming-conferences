@@ -45,7 +45,7 @@ function renderTable(type, rows, tbodyId) {
 
       return `
         <tr class="${hiddenClass}" data-id="${c.id}">
-          <td data-label="学会名"><strong>${escapeHtml(c.name)}</strong>${hiddenBadge}${c.website ? ` <a class="hint" href="${escapeHtml(c.website)}" target="_blank" rel="noopener noreferrer">↗</a>` : ''}</td>
+          <td data-label="学会名">${c.website ? `<a href="${escapeHtml(c.website)}" target="_blank" rel="noopener noreferrer"><strong>${escapeHtml(c.name)}</strong></a>` : `<strong>${escapeHtml(c.name)}</strong>`}${hiddenBadge}${c.website ? ` <a class="hint" href="${escapeHtml(c.website)}" target="_blank" rel="noopener noreferrer">↗</a>` : ''}</td>
           ${deadlineCell(c.applicationDeadline, '申し込み期限', false)}
           ${deadlineCell(c.abstractDeadline, '抄録提出期限', true)}
           ${deadlineCell(c.manuscriptDeadline, '原稿提出期限', true)}
