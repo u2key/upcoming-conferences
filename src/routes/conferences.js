@@ -24,6 +24,81 @@ function emitUpdate(reason, conference) {
   }
 }
 
+/**
+ * GET /api/conferences/export
+ * Public-friendly raw JSON export for integrations.
+ * Query params:
+ *  - type=domestic|international
+ *  - tag=TAG (exact match)
+ *  - since=ISO8601 (filters updatedAt >= since)
+ *  - fields=comma,separated,list (select subset of returned keys)
+ *  - format=json|ndjson (default json)
+ *  - includeHidden=1 (only honored for authenticated users)
+ */
+router.get('/export', (req, res) => {
+  try {
+    // Basic param validation
+    const type = req.query.type || undefined;
+    if (type && type !== 'domestic' && type !== 'international') {
+      return res.status(400).json({ error: 'type は domestic または international です' });
+    }
+
+    const includeHidden = req.user && req.query.includeHidden === '1' ? true : false;
+    // Load base list (public shape)
+    let list = conferences.list({ type, includeHidden });
+
+    // Tag filter
+    if (req.query.tag) {
+      const tag = String(req.query.tag);
+      list = list.filter((c) => (c.tag || '') === tag);
+    }
+
+    // Since filter (updatedAt >= since)
+    if (req.query.since) {
+      const since = String(req.query.since);
+      list = list.filter((c) => {
+        const updated = c.updatedAt || c.createdAt || '';
+        return updated >= since;
+      });
+    }
+
+    // Fields selection
+    let fields = null;
+    if (req.query.fields) {
+      fields = String(req.query.fields)
+        .split(',')
+        .map((f) => f.trim())
+        .filter(Boolean);
+      // sanitize: only allow keys present in a sample conference
+      const sample = list[0] || conferences.toPublic({ id: null, name: '', type: 'domestic' });
+      const allowed = new Set(Object.keys(sample));
+      fields = fields.filter((f) => allowed.has(f));
+      if (fields.length === 0) fields = null;
+    }
+
+    // Format
+    const format = (req.query.format || 'json').toLowerCase();
+    // CORS for integrations
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Cache-Control', 'public, max-age=60');
+
+    if (format === 'ndjson') {
+      res.type('application/x-ndjson');
+      // Stream as NDJSON
+      for (const item of list) {
+        const out = fields ? fields.reduce((acc, f) => ({ ...acc, [f]: item[f] }), {}) : item;
+        res.write(JSON.stringify(out) + '\n');
+      }
+      return res.end();
+    }
+
+    // Default: JSON array
+    res.json(fields ? list.map((item) => fields.reduce((acc, f) => ({ ...acc, [f]: item[f] }), {})) : list);
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
 /** GET /api/conferences — public list (hidden excluded). Query: type=domestic|international */
 router.get('/', (req, res) => {
   try {
