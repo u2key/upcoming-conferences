@@ -2,6 +2,7 @@
 
 const { getDb } = require('../db/database');
 const users = require('./users');
+const mail = require('./mail');
 
 function toPublic(row) {
   if (!row) return null;
@@ -66,9 +67,16 @@ function submitApplication({ email, fullName, affiliation, username, password })
     )
     .run(emailNorm, fullName.trim(), affiliation.trim(), usernameNorm, passwordHash);
 
-  return toPublic(
-    db.prepare('SELECT * FROM account_applications WHERE id = ?').get(result.lastInsertRowid)
-  );
+  const appRow = db.prepare('SELECT * FROM account_applications WHERE id = ?').get(result.lastInsertRowid);
+  const publicApp = toPublic(appRow);
+
+  // Notify admins asynchronously; failures should not prevent submission
+  mail.sendApplicationSubmittedNotification(publicApp).catch((err) => {
+    // Log and continue
+    console.error('Failed to send application notification to admins:', err && err.message ? err.message : err);
+  });
+
+  return publicApp;
 }
 
 /**
