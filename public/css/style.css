@@ -283,6 +283,8 @@ table.data .actions {
 .deadline.passed {
   color: var(--muted);
   text-decoration: line-through;
+  background: var(--border);
+  border-radius: 4px;
 }
 
 .empty {
