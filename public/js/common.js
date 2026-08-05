@@ -34,7 +34,7 @@ function formatDate(value) {
 
 /** Classify deadline relative to today. */
 function deadlineClass(value) {
-  if (!value) return '';
+  if (!value) return 'unset';
   const day = value.slice(0, 10);
   const today = new Date();
   const t = today.toISOString().slice(0, 10);

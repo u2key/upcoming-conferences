@@ -286,6 +286,10 @@ table.data .actions {
   background: var(--border);
   border-radius: 4px;
 }
+.deadline.unset {
+  background: var(--border);
+  border-radius: 4px;
+}
 
 .empty {
   color: var(--muted);
