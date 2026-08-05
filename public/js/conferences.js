@@ -58,6 +58,30 @@ function renderTable(type, rows, tbodyId) {
     .join('');
 }
 
+/**
+ * Navigate to `url` the way `target="_blank"` would: try opening a new tab,
+ * fall back to navigating the top window, and finally the current window.
+ * Used when embedded in an iframe that may block popups or have restrictive sizing.
+ */
+function openInNewContext(url) {
+  let opened = null;
+  try {
+    opened = window.open(url, '_blank');
+  } catch (e) {
+    opened = null;
+  }
+  if (opened) return;
+  try {
+    if (window.top && window.top !== window) {
+      window.top.location.href = url;
+      return;
+    }
+  } catch (e) {
+    // ignore cross-origin access error
+  }
+  location.href = url;
+}
+
 function isEnded(conf) {
   if (!conf || !conf.endDate) return false;
   const end = (conf.endDate || '').slice(0, 10);
@@ -434,27 +458,7 @@ function setupEditorUI() {
     // Always attach handler: redirect viewers to login, editors open the modal
     addBtn1.addEventListener('click', () => {
       if (!currentUser) {
-        // Not logged in -> try opening login in a new tab (works when parent allows popups),
-        // otherwise try to navigate top window, otherwise fallback to iframe navigation.
-        const loginUrl = '/login.html';
-        let opened = null;
-        try {
-          opened = window.open(loginUrl, '_blank');
-        } catch (e) {
-          opened = null;
-        }
-        if (opened) return;
-        // Try top navigation if same-origin or allowed
-        try {
-          if (window.top && window.top !== window) {
-            window.top.location.href = loginUrl;
-            return;
-          }
-        } catch (e) {
-          // ignore cross-origin access error
-        }
-        // Last resort: navigate inside iframe
-        location.href = loginUrl;
+        openInNewContext('/login.html');
         return;
       }
       openModal(null);
@@ -466,21 +470,7 @@ function setupEditorUI() {
     // Always attach handler: redirect viewers to login, editors open the modal
     addBtn2.addEventListener('click', () => {
       if (!currentUser) {
-        const loginUrl = '/login.html';
-        let opened = null;
-        try {
-          opened = window.open(loginUrl, '_blank');
-        } catch (e) {
-          opened = null;
-        }
-        if (opened) return;
-        try {
-          if (window.top && window.top !== window) {
-            window.top.location.href = loginUrl;
-            return;
-          }
-        } catch (e) {}
-        location.href = loginUrl;
+        openInNewContext('/login.html');
         return;
       }
       openModal(null);
@@ -493,6 +483,14 @@ function setupEditorUI() {
     viewHiddenBtn.addEventListener('click', async () => {
       if (!currentUser || !currentUser.isAdmin) {
         location.href = '/login.html';
+        return;
+      }
+      // Embedded in an iframe: open the site in a new tab (target=_blank
+      // equivalent) instead of showing the modal inline, since the parent
+      // frame may not have room to display it. The admin can click the
+      // button again once there.
+      if (window.self !== window.top) {
+        openInNewContext('/');
         return;
       }
       const backdrop = document.getElementById('hidden-modal-backdrop');
