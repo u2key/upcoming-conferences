@@ -262,6 +262,11 @@ table.data tr:hover td {
   background: #f8fafc;
 }
 
+table.data tr:hover td.deadline.passed,
+table.data tr:hover td.deadline.unset {
+  background: #c3ccd6;
+}
+
 table.data tr.hidden-row td {
   opacity: 0.55;
 }
