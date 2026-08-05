@@ -482,7 +482,7 @@ function setupEditorUI() {
   if (viewHiddenBtn) {
     viewHiddenBtn.addEventListener('click', async () => {
       if (!currentUser || !currentUser.isAdmin) {
-        location.href = '/login.html';
+        openInNewContext('/login.html');
         return;
       }
       // Embedded in an iframe: open the site in a new tab (target=_blank
