@@ -8,6 +8,7 @@ if (window.self !== window.top) {
     }
   });
   document.getElementById("site-header").style.display = 'none';
+  [].slice.call(document.querySelectorAll(".container")).forEach(e=>e.style.maxWidth='unset');
 }
 
 function sendWindowSize() {
