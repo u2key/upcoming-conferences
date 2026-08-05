@@ -45,12 +45,25 @@ function toPublic(row) {
 }
 
 function rowFromInput(data) {
+  const abstract_deadline = data.abstractDeadline || data.abstract_deadline || null;
+  const manuscript_deadline = data.manuscriptDeadline || data.manuscript_deadline || null;
+  let application_deadline = data.applicationDeadline || data.application_deadline || null;
+
+  // If no application deadline was given, default it to the earlier of the
+  // abstract/manuscript deadlines (whichever is set).
+  if (!application_deadline) {
+    const candidates = [abstract_deadline, manuscript_deadline].filter(Boolean);
+    if (candidates.length) {
+      application_deadline = candidates.sort()[0];
+    }
+  }
+
   return {
     name: (data.name || '').trim(),
     type: data.type,
-    application_deadline: data.applicationDeadline || data.application_deadline || null,
-    abstract_deadline: data.abstractDeadline || data.abstract_deadline || null,
-    manuscript_deadline: data.manuscriptDeadline || data.manuscript_deadline || null,
+    application_deadline,
+    abstract_deadline,
+    manuscript_deadline,
     start_date: data.startDate || data.start_date || null,
     end_date: data.endDate || data.end_date || null,
     website: (data.website || data.website || '').trim(),
