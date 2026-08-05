@@ -259,7 +259,7 @@ table.data th {
 }
 
 table.data tr:hover td {
-  background: #f8fafc;
+  background: #e8eaec;
 }
 
 table.data tr:hover td.deadline.passed,
