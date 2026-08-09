@@ -1,7 +1,7 @@
 'use strict';
 
 const { api } = window.UCApi;
-const { formatDate, deadlineClass, escapeHtml, renderNavAuth } = window.UCCommon;
+const { formatDate, deadlineClass, scheduleDailyReload, escapeHtml, renderNavAuth } = window.UCCommon;
 
 let currentUser = null;
 let allConferences = [];
@@ -646,6 +646,11 @@ async function main() {
       `<tr><td colspan="8" class="empty">読み込みに失敗しました: ${escapeHtml(err.message)}</td></tr>`;
   }
   connectSocket();
+  scheduleDailyReload(1, () => {
+    const modal = document.getElementById('modal-backdrop');
+    const hiddenModal = document.getElementById('hidden-modal-backdrop');
+    return (modal && !modal.hidden) || (hiddenModal && !hiddenModal.hidden);
+  });
 }
 
 document.addEventListener('DOMContentLoaded', main);

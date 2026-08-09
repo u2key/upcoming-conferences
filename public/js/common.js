@@ -45,6 +45,33 @@ function deadlineClass(value) {
   return '';
 }
 
+/**
+ * Reload the page once at the next occurrence of `hourUTC:00` UTC, so that
+ * date-relative UI (deadline highlighting, "ended" filtering) picks up the new
+ * day even if the page is left open for a long time without a manual reload
+ * or a data-driven Socket.io update. A full reload re-schedules the next one,
+ * so a single setTimeout (well under its ~24.8-day cap) is enough.
+ *
+ * If `shouldDefer` is given and returns true at the scheduled time (e.g. a
+ * form modal is open, so an in-flight save could be interrupted), the reload
+ * is postponed and re-checked every `deferCheckMs` until it returns false.
+ */
+function scheduleDailyReload(hourUTC = 1, shouldDefer = null, deferCheckMs = 30000) {
+  const now = new Date();
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hourUTC, 0, 0, 0));
+  if (next <= now) next.setUTCDate(next.getUTCDate() + 1);
+
+  function reloadWhenReady() {
+    if (shouldDefer && shouldDefer()) {
+      setTimeout(reloadWhenReady, deferCheckMs);
+      return;
+    }
+    location.reload();
+  }
+
+  setTimeout(reloadWhenReady, next.getTime() - now.getTime());
+}
+
 function escapeHtml(str) {
   if (str == null) return '';
   return String(str)
@@ -110,6 +137,7 @@ async function renderNavAuth() {
 window.UCCommon = {
   formatDate,
   deadlineClass,
+  scheduleDailyReload,
   escapeHtml,
   renderNavAuth,
 };
