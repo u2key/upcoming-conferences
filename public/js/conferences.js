@@ -92,16 +92,11 @@ function isEnded(conf) {
 function getNextDeadlineValue(conf) {
   if (!conf) return '';
   const keys = ['applicationDeadline', 'abstractDeadline', 'manuscriptDeadline'];
-  const today = new Date().toISOString().slice(0, 10);
   const dates = keys
-    .map((k) => (conf[k] ? (conf[k] || '').slice(0, 10) : null))
+    .map((k) => (conf[k] ? conf[k].slice(0, 10) : null))
     .filter(Boolean);
   if (!dates.length) return '';
-  // prefer upcoming (>= today)
-  const future = dates.filter((d) => d >= today);
-  if (future.length) return future.sort()[0];
-  // otherwise return the most recent past (largest)
-  return dates.sort().slice(-1)[0];
+  return dates.sort()[0];
 }
 
 function sortConferences() {
