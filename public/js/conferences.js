@@ -244,7 +244,11 @@ function renderAll(list) {
 
   // Filter out conferences that have already ended for main listing
   allConferences = (list || []).filter((c) => !isEnded(c));
-  // Apply sorting if set
+  renderTables();
+}
+
+/** Sort and draw the tables. The notice above them needs the unfiltered list, so renderAll owns it. */
+function renderTables() {
   sortConferences();
   renderTable('domestic', allConferences, 'tbody-domestic');
   renderTable('international', allConferences, 'tbody-international');
@@ -365,8 +369,7 @@ function setupSorting() {
       // reflect in select if present
       if (select) select.value = sortKey;
 
-      sortConferences();
-      renderAll(allConferences);
+      renderTables();
     });
   });
 
@@ -386,8 +389,7 @@ function setupSorting() {
         ind.textContent = ' ▲';
         match.appendChild(ind);
       }
-      sortConferences();
-      renderAll(allConferences);
+      renderTables();
     });
   }
 }
@@ -704,6 +706,13 @@ function setupEditorUI() {
   };
   if (closeHidden) closeHidden.addEventListener('click', closeHiddenModal);
   closeOnBackdropClick(hiddenBackdrop, closeHiddenModal);
+
+  document.addEventListener('keydown', (e) => {
+    // During Japanese input, Esc cancels the conversion rather than the modal
+    if (e.key !== 'Escape' || e.isComposing) return;
+    if (!document.getElementById('modal-backdrop').hidden) requestCloseModal();
+    else if (!hiddenBackdrop.hidden) closeHiddenModal();
+  });
 
   // Delegate click handling inside hidden modal for edit/unhide actions
   const hiddenBody = document.getElementById('hidden-modal-body');
