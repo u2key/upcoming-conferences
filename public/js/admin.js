@@ -147,10 +147,12 @@ async function loadLogs() {
     }
     tbody.innerHTML = rows
       .map((log) => {
-        const canRollback = log.action !== 'rollback';
-        const rollbackBtn = canRollback
-          ? `<button type="button" class="btn btn-secondary btn-sm" data-rollback="${log.id}">ロールバック</button>`
-          : '<span class="hint">—</span>';
+        let rollbackBtn = '<span class="hint">—</span>';
+        if (!log.conferenceExists) {
+          rollbackBtn = '<span class="hint">削除済み</span>';
+        } else if (log.action !== 'rollback') {
+          rollbackBtn = `<button type="button" class="btn btn-secondary btn-sm" data-rollback="${log.id}">ロールバック</button>`;
+        }
         return `
           <tr>
             <td>${log.id}</td>

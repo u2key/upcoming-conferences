@@ -91,4 +91,58 @@ describe('database', () => {
     const remaining = db.prepare('SELECT COUNT(*) AS c FROM operation_logs').get().c;
     assert.equal(remaining, 1);
   });
+
+  it('migrates operation_logs from a database that predates delete logging', () => {
+    const Database = require('better-sqlite3');
+    const config = require('../src/config');
+    const schema = fs.readFileSync(path.join(__dirname, '../src/db/schema.sql'), 'utf8');
+    const oldSchema = schema.replace(", 'delete'))", '))');
+    assert.notEqual(oldSchema, schema);
+
+    const oldPath = path.join(tmpDir, 'old.db');
+    const old = new Database(oldPath);
+    old.exec(oldSchema);
+    old.prepare(
+      `INSERT INTO users (id, username, email, password_hash, full_name) VALUES (7, 'u', 'u@x', 'h', 'U')`
+    ).run();
+    old.prepare(
+      `INSERT INTO operation_logs (id, conference_id, user_id, action, before_data, after_data, created_at)
+       VALUES (42, 5, 7, 'update', '{"a":1}', '{"a":2}', '2026-01-02 03:04:05')`
+    ).run();
+    assert.throws(() =>
+      old.prepare(`INSERT INTO operation_logs (user_id, action) VALUES (7, 'delete')`).run()
+    );
+    old.close();
+
+    const originalPath = config.dbPath;
+    closeDb();
+    config.dbPath = oldPath;
+    try {
+      const db = getDb();
+      assert.deepEqual(db.prepare('SELECT * FROM operation_logs').all(), [
+        {
+          id: 42,
+          conference_id: 5,
+          user_id: 7,
+          action: 'update',
+          before_data: '{"a":1}',
+          after_data: '{"a":2}',
+          created_at: '2026-01-02 03:04:05',
+        },
+      ]);
+      db.prepare(`INSERT INTO operation_logs (user_id, action) VALUES (7, 'delete')`).run();
+
+      const names = db.prepare(`SELECT name FROM sqlite_master`).all().map((r) => r.name);
+      assert.ok(names.includes('idx_operation_logs_created'));
+      assert.ok(names.includes('idx_operation_logs_conference'));
+      assert.ok(!names.includes('operation_logs_legacy'));
+
+      // Re-opening a migrated database changes nothing
+      closeDb();
+      assert.equal(getDb().prepare('SELECT COUNT(*) AS c FROM operation_logs').get().c, 2);
+    } finally {
+      closeDb();
+      config.dbPath = originalPath;
+    }
+  });
 });

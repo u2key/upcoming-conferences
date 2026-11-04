@@ -8,6 +8,33 @@ const config = require('../config');
 let db = null;
 
 /**
+ * Older databases have an operation_logs CHECK constraint without 'delete'.
+ * SQLite cannot alter a CHECK constraint, so rebuild the table from schema.sql,
+ * keeping every row. Atomic and a no-op once the constraint allows 'delete'.
+ */
+function migrateOperationLogsActions(database, schema) {
+  const { sql } = database
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'operation_logs'")
+    .get();
+  if (sql.includes("'delete'")) return;
+
+  database.transaction(() => {
+    database.exec(`
+      DROP INDEX IF EXISTS idx_operation_logs_created;
+      DROP INDEX IF EXISTS idx_operation_logs_conference;
+      ALTER TABLE operation_logs RENAME TO operation_logs_legacy;
+    `);
+    database.exec(schema);
+    database.exec(`
+      INSERT INTO operation_logs (id, conference_id, user_id, action, before_data, after_data, created_at)
+        SELECT id, conference_id, user_id, action, before_data, after_data, created_at
+        FROM operation_logs_legacy;
+      DROP TABLE operation_logs_legacy;
+    `);
+  })();
+}
+
+/**
  * Open (or create) the SQLite database and apply schema.
  * @returns {import('better-sqlite3').Database}
  */
@@ -39,6 +66,7 @@ function getDb() {
       // Add tag column (identifier) to help reliably group recurring conferences
       db.prepare("ALTER TABLE conferences ADD COLUMN tag TEXT NOT NULL DEFAULT ''").run();
     }
+    migrateOperationLogsActions(db, schema);
   } catch (e) {
     // Migration failures should not crash startup; log and continue
     console.error('DB migration check failed:', e && e.message ? e.message : e);

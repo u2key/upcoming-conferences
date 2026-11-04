@@ -2,7 +2,7 @@
 
 const express = require('express');
 const conferences = require('../services/conferences');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -151,8 +151,8 @@ router.put('/:id', requireAuth, (req, res) => {
   }
 });
 
-/** POST /api/conferences/:id/hide */
-router.post('/:id/hide', requireAuth, (req, res) => {
+/** POST /api/conferences/:id/hide (admin only) */
+router.post('/:id/hide', requireAdmin, (req, res) => {
   try {
     const conf = conferences.setHidden(parseInt(req.params.id, 10), true, req.user.id);
     emitUpdate('hide', conf);
@@ -162,20 +162,10 @@ router.post('/:id/hide', requireAuth, (req, res) => {
   }
 });
 
-/** POST /api/conferences/:id/unhide */
-router.post('/:id/unhide', requireAuth, (req, res) => {
+/** POST /api/conferences/:id/unhide (admin only) */
+router.post('/:id/unhide', requireAdmin, (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    const raw = conferences.getRaw(id);
-    if (!raw) return res.status(404).json({ error: '学会が見つかりません' });
-    // server-side end check: if conference has ended and user is not admin, forbid
-    const end = (raw.end_date || '').slice(0, 10);
-    const today = new Date().toISOString().slice(0, 10);
-    const ended = end && end < today;
-    if (ended && !(req.user && req.user.isAdmin)) {
-      return res.status(403).json({ error: '終了した学会は管理者のみ再表示できます' });
-    }
-    const conf = conferences.setHidden(id, false, req.user.id);
+    const conf = conferences.setHidden(parseInt(req.params.id, 10), false, req.user.id);
     emitUpdate('unhide', conf);
     res.json({ conference: conf });
   } catch (err) {
@@ -184,11 +174,10 @@ router.post('/:id/unhide', requireAuth, (req, res) => {
 });
 
 /** DELETE /api/conferences/:id — permanent delete (admin only) */
-router.delete('/:id', requireAuth, (req, res) => {
+router.delete('/:id', requireAdmin, (req, res) => {
   try {
-    if (!req.user || !req.user.isAdmin) return res.status(403).json({ error: '管理者権限が必要です' });
     const id = parseInt(req.params.id, 10);
-    const deleted = conferences.deleteById(id);
+    const deleted = conferences.deleteById(id, req.user.id);
     if (!deleted) return res.status(404).json({ error: '学会が見つかりません' });
     emitUpdate('delete', deleted);
     res.json({ ok: true });

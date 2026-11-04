@@ -7,9 +7,9 @@
 ## 主要機能（要点）
 
 - 国内（domestic）／国際（international）の学会一覧表示
-- 承認済みユーザによる学会の追加・編集・非表示（管理者が恒久削除可）
+- 承認済みユーザによる学会の追加・修正（非表示・再表示・恒久削除は管理者のみ）
 - アカウント申請 → 管理者承認（承認/パスワードリセット時にメール送信）
-- 編集者は非表示（終了）学会の閲覧と条件付きで再表示可能（編集は管理者のみ）
+- 編集者は学会の追加・修正のみ可能（非表示レコードは API で読み取り可、変更操作は不可）
 - 学会はタグ（tag）で識別。タグ単位で「全レコードが非表示」の場合に通知を表示
 - サーバ側で SameSite=None; Secure 指定のクロスサイト cookie を有効化可能（iframe 埋め込み対応）
 - 生データ出力 API: `/api/conferences/export`（JSON/NDJSON, CORS 対応）
@@ -146,13 +146,13 @@ GET /api/conferences/export
 - GET `/api/conferences/:id` — 単一取得（非表示は未認証時 404）
 - POST `/api/conferences` — 追加（認証）
 - PUT `/api/conferences/:id` — 更新（認証）
-- POST `/api/conferences/:id/hide` — 非表示（認証）
-- POST `/api/conferences/:id/unhide` — 再表示（認証、終了済は管理者のみ再表示可能）
-- DELETE `/api/conferences/:id` — 恒久削除（管理者のみ）
+- POST `/api/conferences/:id/hide` — 非表示（管理者のみ）
+- POST `/api/conferences/:id/unhide` — 再表示（管理者のみ）
+- DELETE `/api/conferences/:id` — 恒久削除（管理者のみ。操作ログに記録、ロールバック不可）
 
 認証・権限の注意:
-- 編集は管理者のみ（UI では編集ボタンを管理者に限定）
-- 編集者は非表示レコード閲覧・未終了の再表示が可能
+- 編集者が行える変更は追加（POST）と修正（PUT）のみ
+- 非表示・再表示・恒久削除は管理者のみ（サーバ側で検証）
 - includeHidden の読み取りは認証ユーザのみ許可
 
 ---
@@ -182,7 +182,7 @@ GET /api/conferences/export
   - tag と website の表示/編集対応
   - 埋め込み（iframe）時に target=_blank が効かない場合のフォールバック（window.open / top.location）を実装
   - 表幅に応じた stacked-table レイアウト切替
-  - 非表示学会を一覧表示するモーダル（管理者/編集者向け）と複製機能
+  - 非表示学会を一覧表示するモーダル（管理者向け）と複製機能
 
 - public/index.html / public/css/style.css
   - モーダル・通知バナー・レスポンシブスタイルの追加
@@ -193,7 +193,7 @@ GET /api/conferences/export
 
 - CROSS_SITE_COOKIES=true にしたら必ず TLS を有効にしてください。クロスサイトクッキーは Secure 属性が必須です。
 - 埋め込み先ページ（iframe 親）がポリシーや sandbox 属性でポップアップを禁止していると新規タブを開けません。親側に postMessage ハンドラを用意する連携が最も確実です。
-- 恒久削除（DELETE）は管理者のみ可能です。必要な場合は監査ログを追加してください（現状、削除時の audit ログは記録していません）。
+- 恒久削除（DELETE）は管理者のみ可能です。操作ログに削除前のスナップショットを記録します（保持期間 90 日）。削除された学会は、その学会のどの操作ログからもロールバックできません。
 
 ---
 
@@ -214,14 +214,14 @@ npm test
 - サーバ: クロスサイトクッキー（SameSite=None; Secure）と Partitioned 属性オプションを追加
 - サービス: 管理者へアカウント申請通知メールを送る実装を追加（Resend での検証済み）
 - フロント: tag 表示・非表示管理モーダル・埋め込みフォールバック・レスポンシブ改善
-- 権限: 編集者/管理者の権限調整（非表示閲覧/再表示の制限、編集は管理者のみ）
+- 権限: 編集者の変更操作を追加・修正のみに制限（非表示・再表示・恒久削除は管理者のみ）
+- 操作ログ: 恒久削除を記録。削除済み学会のロールバックを拒否（既存 DB の operation_logs は起動時に自動移行）
 
 ---
 
 ## 追加で検討すべき改善
 
 - エクスポート API にAPIキー認証やページング、gzip 圧縮を追加
-- 恒久削除に監査ログを残す（コンプライアンス対策）
 - parent postMessage を用いた iframe 連携サンプルの整備
 - Resend（または別 SMTP）向け送信テンプレート強化・HTML メール対応
 

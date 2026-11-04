@@ -286,40 +286,31 @@ function restoreFromSnapshot(snapshot, userId) {
     snapshot.id
     );
   } else {
-    // Re-insert with original id if the row was somehow missing
-    db.prepare(
-      `INSERT INTO conferences
-         (id, name, type, application_deadline, abstract_deadline, manuscript_deadline,
-          start_date, end_date, website, tag, location, is_hidden, created_by, updated_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(
-      snapshot.id,
-      snapshot.name,
-      snapshot.type,
-      snapshot.application_deadline,
-      snapshot.abstract_deadline,
-      snapshot.manuscript_deadline,
-      snapshot.start_date,
-      snapshot.end_date,
-      snapshot.website || '',
-      snapshot.tag || '',
-      snapshot.location || '',
-      snapshot.is_hidden ? 1 : 0,
-      snapshot.created_by || userId,
-      userId
-    );
+    // Never re-create a row: a missing conference was permanently deleted.
+    const err = new Error('学会が見つかりません');
+    err.status = 404;
+    throw err;
   }
 
   return toPublic(getRaw(snapshot.id));
 }
 
-// Permanently delete a conference and return the deleted public data, or null if not found
-function deleteById(id) {
+// Permanently delete a conference and return the deleted public data, or null if not found.
+// The delete and its audit entry commit together, so no delete goes unlogged.
+function deleteById(id, userId) {
   const db = getDb();
   const existing = getRaw(id);
   if (!existing) return null;
-  db.prepare('DELETE FROM conferences WHERE id = ?').run(id);
-  // skipping audit log to avoid adding new action types
+  db.transaction(() => {
+    db.prepare('DELETE FROM conferences WHERE id = ?').run(id);
+    audit.logOperation({
+      conferenceId: id,
+      userId,
+      action: 'delete',
+      beforeData: existing,
+      afterData: null,
+    });
+  })();
   return toPublic(existing);
 }
 

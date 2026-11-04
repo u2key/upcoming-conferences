@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS operation_logs (
   conference_id INTEGER,
   user_id INTEGER NOT NULL,
   action TEXT NOT NULL
-    CHECK (action IN ('create', 'update', 'hide', 'unhide', 'rollback')),
+    CHECK (action IN ('create', 'update', 'hide', 'unhide', 'rollback', 'delete')),
   before_data TEXT,
   after_data TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),

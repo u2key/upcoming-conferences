@@ -13,6 +13,11 @@ function deadlineCell(value, label, optional = false) {
   return `<td class="deadline ${cls}${optional ? ' optional' : ''}" data-label="${escapeHtml(label)}">${escapeHtml(formatDate(value))}</td>`;
 }
 
+function deleteButton(c) {
+  if (!currentUser || !currentUser.isAdmin) return '';
+  return `<button type="button" class="btn btn-danger btn-sm" data-action="delete" data-id="${c.id}" data-name="${escapeHtml(c.name)}">削除</button>`;
+}
+
 function renderTable(type, rows, tbodyId) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
@@ -31,13 +36,14 @@ function renderTable(type, rows, tbodyId) {
         : '';
       let actions = '';
       if (currentUser) {
-        const hideBtn = c.isHidden
+        const hideBtn = !currentUser.isAdmin ? '' : c.isHidden
           ? `<button type="button" class="btn btn-secondary btn-sm" data-action="unhide" data-id="${c.id}">再表示</button>`
           : `<button type="button" class="btn btn-secondary btn-sm" data-action="hide" data-id="${c.id}">非表示</button>`;
         actions = `
           <td class="actions">
             <button type="button" class="btn btn-sm" data-action="edit" data-id="${c.id}">編集</button>
             ${hideBtn}
+            ${deleteButton(c)}
           </td>`;
       } else {
         actions = `<td></td>`;
@@ -425,6 +431,19 @@ async function onSubmitForm(e) {
   }
 }
 
+/** Permanently delete after confirmation. Resolves true if the record was deleted. */
+async function confirmAndDelete(id, name) {
+  if (!confirm(`「${name}」を完全に削除しますか？\nこの操作は取り消せません。`)) return false;
+  try {
+    await api(`/api/conferences/${id}`, { method: 'DELETE' });
+    await loadConferences();
+    return true;
+  } catch (err) {
+    alert(err.message);
+    return false;
+  }
+}
+
 function onTableClick(e) {
   const btn = e.target.closest('button[data-action]');
   if (!btn) return;
@@ -442,6 +461,8 @@ function onTableClick(e) {
     api(`/api/conferences/${id}/unhide`, { method: 'POST' })
       .then(() => loadConferences())
       .catch((err) => alert(err.message));
+  } else if (action === 'delete') {
+    confirmAndDelete(id, btn.dataset.name);
   }
 }
 
@@ -515,6 +536,7 @@ function setupEditorUI() {
               <td class="actions">
                 <button class="btn btn-sm" data-action="edit" data-id="${c.id}">編集</button>
                 <button class="btn btn-secondary btn-sm" data-action="unhide" data-id="${c.id}">再表示</button>
+                ${deleteButton(c)}
               </td>
             </tr>`;
           }).join('\n');
@@ -561,8 +583,6 @@ function setupEditorUI() {
       const action = btn.dataset.action;
       const id = parseInt(btn.dataset.id, 10);
       if (action === 'edit') {
-        // Only admins can edit
-        if (!currentUser || !currentUser.isAdmin) return alert('編集は管理者のみ行えます');
         document.getElementById('hidden-modal-backdrop').hidden = true;
         const conf = allConferences.find((c) => c.id === id);
         if (conf) {
@@ -573,23 +593,19 @@ function setupEditorUI() {
           }).catch((err) => alert(err.message));
         }
       } else if (action === 'unhide') {
-        // Editors can unhide only if not ended; admins can unhide always
-        api(`/api/conferences/${id}`).then((res) => {
-          const conf = res.conference;
-          const ended = isEnded(conf);
-          if (!currentUser || (!currentUser.isAdmin && ended)) {
-            return alert('この学会は終了しているため、編集者は再表示できません。管理者に依頼してください。');
-          }
-          if (!confirm('この学会を再表示しますか？（必要であれば日付を更新してください）')) return;
-          api(`/api/conferences/${id}/unhide`, { method: 'POST' })
-            .then(() => {
-              // refresh both hidden modal and main list
-              viewHiddenBtn.click();
-              loadConferences();
-              alert('再表示しました（必要なら日付を編集してください）。');
-            })
-            .catch((err) => alert(err.message));
-        }).catch((err) => alert(err.message));
+        if (!confirm('この学会を再表示しますか？（必要であれば日付を更新してください）')) return;
+        api(`/api/conferences/${id}/unhide`, { method: 'POST' })
+          .then(() => {
+            // refresh both hidden modal and main list
+            viewHiddenBtn.click();
+            loadConferences();
+            alert('再表示しました（必要なら日付を編集してください）。');
+          })
+          .catch((err) => alert(err.message));
+      } else if (action === 'delete') {
+        confirmAndDelete(id, btn.dataset.name).then((deleted) => {
+          if (deleted) viewHiddenBtn.click(); // refresh the modal's list
+        });
       } else if (action === 'duplicate') {
         // Duplicate: open modal prefilled but clear id for creating new record
         document.getElementById('hidden-modal-backdrop').hidden = true;

@@ -253,4 +253,109 @@ describe('API integration', () => {
     const admin = await request('GET', '/api/admin/applications', { cookie });
     assert.equal(admin.status, 403);
   });
+
+  // Registers and approves a non-admin user, returning their session cookie.
+  async function createEditor(adminCookie, username) {
+    const application = await request('POST', '/api/auth/register', {
+      body: {
+        email: `${username}@example.com`,
+        fullName: username,
+        affiliation: 'Lab',
+        username,
+        password: 'pass_editor',
+      },
+    });
+    await request('POST', `/api/admin/applications/${application.json.application.id}/approve`, {
+      cookie: adminCookie,
+    });
+    const login = await request('POST', '/api/auth/login', {
+      body: { username, password: 'pass_editor' },
+    });
+    assert.equal(login.status, 200);
+    return login.cookie;
+  }
+
+  it('editors can only add and modify conferences', async () => {
+    const adminLogin = await request('POST', '/api/auth/login', {
+      body: { username: 'root', password: 'toor' },
+    });
+    const editor = await createEditor(adminLogin.cookie, 'perm_editor');
+
+    const created = await request('POST', '/api/conferences', {
+      cookie: editor,
+      body: { name: 'Editor Conf', type: 'domestic', endDate: '2099-01-01' },
+    });
+    assert.equal(created.status, 201);
+    const id = created.json.conference.id;
+
+    const updated = await request('PUT', `/api/conferences/${id}`, {
+      cookie: editor,
+      body: { location: 'Nara' },
+    });
+    assert.equal(updated.status, 200);
+    assert.equal(updated.json.conference.location, 'Nara');
+
+    assert.equal((await request('POST', `/api/conferences/${id}/hide`, { cookie: editor })).status, 403);
+    assert.equal((await request('POST', `/api/conferences/${id}/hide`)).status, 401);
+
+    // A hidden, not-yet-ended conference still cannot be unhidden by an editor
+    const hidden = await request('POST', `/api/conferences/${id}/hide`, { cookie: adminLogin.cookie });
+    assert.equal(hidden.status, 200);
+    assert.equal((await request('POST', `/api/conferences/${id}/unhide`, { cookie: editor })).status, 403);
+    const unhidden = await request('POST', `/api/conferences/${id}/unhide`, { cookie: adminLogin.cookie });
+    assert.equal(unhidden.status, 200);
+  });
+
+  it('permanent delete is admin-only, logged, and cannot be rolled back', async () => {
+    const adminLogin = await request('POST', '/api/auth/login', {
+      body: { username: 'root', password: 'toor' },
+    });
+    const cookie = adminLogin.cookie;
+
+    const created = await request('POST', '/api/conferences', {
+      cookie,
+      body: { name: 'Delete Target', type: 'domestic' },
+    });
+    const id = created.json.conference.id;
+
+    // Anonymous: rejected
+    const anon = await request('DELETE', `/api/conferences/${id}`);
+    assert.equal(anon.status, 401);
+
+    // Non-admin: rejected
+    const editor = await createEditor(cookie, 'delete_editor');
+    const denied = await request('DELETE', `/api/conferences/${id}`, { cookie: editor });
+    assert.equal(denied.status, 403);
+    assert.equal((await request('GET', `/api/conferences/${id}`)).status, 200);
+
+    await request('PUT', `/api/conferences/${id}`, { cookie, body: { location: 'Before Delete' } });
+
+    // Admin: deleted, including from the hidden-inclusive list
+    const deleted = await request('DELETE', `/api/conferences/${id}`, { cookie });
+    assert.equal(deleted.status, 200);
+    assert.equal((await request('GET', `/api/conferences/${id}`)).status, 404);
+    const list = await request('GET', '/api/conferences?includeHidden=1', { cookie });
+    assert.ok(!list.json.conferences.some((c) => c.id === id));
+
+    // Deleting again: not found
+    const again = await request('DELETE', `/api/conferences/${id}`, { cookie });
+    assert.equal(again.status, 404);
+
+    // The delete is logged with a snapshot of the removed row
+    const logs = await request('GET', `/api/admin/logs?conferenceId=${id}`, { cookie });
+    const deleteLog = logs.json.logs.find((l) => l.action === 'delete');
+    assert.ok(deleteLog);
+    assert.equal(deleteLog.beforeData.name, 'Delete Target');
+    assert.equal(deleteLog.afterData, null);
+    assert.equal(logs.json.logs.filter((l) => l.action === 'delete').length, 1);
+
+    // No log entry for the deleted conference can bring it back
+    assert.deepEqual(logs.json.logs.map((l) => l.action).sort(), ['create', 'delete', 'update']);
+    for (const log of logs.json.logs) {
+      assert.equal(log.conferenceExists, false);
+      const rb = await request('POST', `/api/admin/logs/${log.id}/rollback`, { cookie });
+      assert.equal(rb.status, 400, `rollback of ${log.action} must be refused`);
+    }
+    assert.equal((await request('GET', `/api/conferences/${id}`)).status, 404);
+  });
 });

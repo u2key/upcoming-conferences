@@ -24,6 +24,7 @@ function toPublic(row) {
     conferenceId: row.conference_id,
     userId: row.user_id,
     username: row.username || null,
+    conferenceExists: !!row.conference_exists,
     action: row.action,
     beforeData: parse(row.before_data),
     afterData: parse(row.after_data),
@@ -66,9 +67,10 @@ function listLogs({ conferenceId, limit = 200 } = {}) {
   const db = getDb();
   const params = [];
   let sql = `
-    SELECT ol.*, u.username
+    SELECT ol.*, u.username, c.id IS NOT NULL AS conference_exists
     FROM operation_logs ol
     LEFT JOIN users u ON u.id = ol.user_id
+    LEFT JOIN conferences c ON c.id = ol.conference_id
     WHERE ol.created_at >= datetime('now', ?)
   `;
   params.push(`-${config.logRetentionDays} days`);
@@ -88,9 +90,10 @@ function getLog(id) {
   const db = getDb();
   const row = db
     .prepare(
-      `SELECT ol.*, u.username
+      `SELECT ol.*, u.username, c.id IS NOT NULL AS conference_exists
        FROM operation_logs ol
        LEFT JOIN users u ON u.id = ol.user_id
+       LEFT JOIN conferences c ON c.id = ol.conference_id
        WHERE ol.id = ?`
     )
     .get(id);
@@ -101,6 +104,8 @@ function getLog(id) {
  * Roll back to the state *before* the given log entry.
  * - create  → hide the conference (soft undo)
  * - update/hide/unhide/rollback → restore before_data snapshot
+ * Refused once the conference has been deleted: deletes are permanent, so no
+ * log entry (including the delete itself) can bring the record back.
  */
 function rollback(logId, userId) {
   const conferences = require('./conferences');
@@ -128,14 +133,15 @@ function rollback(logId, userId) {
     ? conferences.getRaw(entry.conferenceId)
     : null;
 
+  if (!current) {
+    const err = new Error('削除された学会はロールバックできません');
+    err.status = 400;
+    throw err;
+  }
+
   let after = null;
 
   if (entry.action === 'create') {
-    if (!entry.conferenceId || !current) {
-      const err = new Error('ロールバック対象の学会が存在しません');
-      err.status = 400;
-      throw err;
-    }
     db.prepare(
       `UPDATE conferences SET is_hidden = 1, updated_by = ?, updated_at = datetime('now')
        WHERE id = ?`
