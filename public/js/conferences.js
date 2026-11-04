@@ -159,7 +159,7 @@ function detectAllHiddenTags(list) {
         return da < db ? -1 : da > db ? 1 : 0;
       })
       .slice(-1)[0];
-    results.push({ tag, latest });
+    results.push({ tag, latest, items });
   });
   return results;
 }
@@ -171,11 +171,15 @@ function renderMissingTagsModal() {
     body.innerHTML = '<p class="hint">該当するタグはありません。</p>';
     return;
   }
+  const isAdmin = currentUser && currentUser.isAdmin;
   const rows = missingTags.map((m) => {
     const latest = m.latest;
     const name = latest && latest.website ? `<a href="${escapeHtml(latest.website)}" target="_blank" rel="noopener noreferrer">${escapeHtml(latest.name)}</a>` : escapeHtml(latest && latest.name || m.tag);
     const dates = escapeHtml((latest && [latest.startDate, latest.endDate].filter(Boolean).join(' ~ ')) || '日付未設定');
-    return `<tr data-tag="${escapeHtml(m.tag)}"><td>${name}</td><td>${escapeHtml(m.tag)}</td><td>${dates}</td><td class="actions"><button class="btn btn-sm" data-action="view-tag" data-tag="${escapeHtml(m.tag)}">過去の記録を見る</button></td></tr>`;
+    const deleteTag = isAdmin
+      ? ` <button class="btn btn-danger btn-sm" data-action="delete-tag" data-tag="${escapeHtml(m.tag)}">タグごと削除（${m.items.length}件）</button>`
+      : '';
+    return `<tr data-tag="${escapeHtml(m.tag)}"><td>${name}</td><td>${escapeHtml(m.tag)}</td><td>${dates}</td><td class="actions"><button class="btn btn-sm" data-action="view-tag" data-tag="${escapeHtml(m.tag)}">過去の記録を見る</button>${deleteTag}</td></tr>`;
   }).join('\n');
   body.innerHTML = `
     <div class="hidden-table-wrap">
@@ -185,6 +189,26 @@ function renderMissingTagsModal() {
       </table>
     </div>
   `;
+}
+
+/** Permanently delete every record of a tag after confirmation, then refresh the list. */
+async function confirmAndDeleteTag(tag) {
+  const entry = missingTags.find((m) => m.tag === tag);
+  if (!entry) return;
+  const shown = entry.items.slice(0, 10).map((c) => `・${c.name}`).join('\n');
+  const rest = entry.items.length > 10 ? `\n…ほか${entry.items.length - 10}件` : '';
+  if (!confirm(`タグ「${tag}」の${entry.items.length}件をすべて完全に削除しますか？\n\n${shown}${rest}\n\nこの操作は取り消せません。`)) return;
+  try {
+    await api(`/api/conferences/by-tag/${encodeURIComponent(tag)}`, { method: 'DELETE' });
+  } catch (err) {
+    alert(err.message);
+  }
+  try {
+    await loadConferences();
+    renderMissingTagsModal();
+  } catch (err) {
+    alert(err.message);
+  }
 }
 
 function renderAll(list) {
@@ -713,6 +737,8 @@ function setupEditorUI() {
         confirmAndDelete(id, btn.dataset.name).then((deleted) => {
           if (deleted) viewHiddenBtn.click(); // refresh the modal's list
         });
+      } else if (action === 'delete-tag') {
+        confirmAndDeleteTag(btn.dataset.tag);
       } else if (action === 'duplicate') {
         // Duplicate: open modal prefilled but clear id for creating new record
         document.getElementById('hidden-modal-backdrop').hidden = true;

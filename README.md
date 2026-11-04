@@ -149,6 +149,7 @@ GET /api/conferences/export
 - POST `/api/conferences/:id/hide` — 非表示（管理者のみ）
 - POST `/api/conferences/:id/unhide` — 再表示（管理者のみ）
 - DELETE `/api/conferences/:id` — 恒久削除（管理者のみ。操作ログに記録、ロールバック不可）
+- DELETE `/api/conferences/by-tag/:tag` — タグ単位の一括恒久削除（管理者のみ。全レコードが非表示または終了済みのタグに限る。表示中のレコードがあれば 409。各レコードを操作ログに記録）
 
 認証・権限の注意:
 - 編集者が行える変更は追加（POST）と修正（PUT）のみ

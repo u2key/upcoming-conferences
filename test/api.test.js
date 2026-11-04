@@ -306,6 +306,59 @@ describe('API integration', () => {
     assert.equal(unhidden.status, 200);
   });
 
+  it('deletes a tag only when all its records are hidden or ended', async () => {
+    const adminLogin = await request('POST', '/api/auth/login', {
+      body: { username: 'root', password: 'toor' },
+    });
+    const cookie = adminLogin.cookie;
+    const add = async (fields) =>
+      (await request('POST', '/api/conferences', {
+        cookie,
+        body: { type: 'domestic', ...fields },
+      })).json.conference;
+    const url = (tag) => `/api/conferences/by-tag/${encodeURIComponent(tag)}`;
+    const exists = async (c) => (await request('GET', `/api/conferences/${c.id}`, { cookie })).status === 200;
+
+    const tag = 'old/series 1'; // needs URL encoding
+    const ended = await add({ name: 'Ended', tag, endDate: '2020-01-02' });
+    const hidden = await add({ name: 'Hidden', tag, endDate: '2099-01-02' });
+    await request('POST', `/api/conferences/${hidden.id}/hide`, { cookie });
+    const otherTag = await add({ name: 'Other', tag: 'other-tag', endDate: '2020-01-02' });
+    const untagged = await add({ name: 'Untagged', endDate: '2020-01-02' });
+
+    // Permissions
+    const editor = await createEditor(cookie, 'tag_editor');
+    assert.equal((await request('DELETE', url(tag))).status, 401);
+    assert.equal((await request('DELETE', url(tag), { cookie: editor })).status, 403);
+    assert.ok(await exists(ended));
+
+    // A record shown in the public list blocks the whole tag
+    const visible = await add({ name: 'Visible', tag, endDate: '2099-01-02' });
+    assert.equal((await request('DELETE', url(tag), { cookie })).status, 409);
+    assert.ok(await exists(ended));
+    assert.ok(await exists(hidden));
+    assert.ok(await exists(visible));
+
+    // Once hidden, the tag can go, and nothing else goes with it
+    await request('POST', `/api/conferences/${visible.id}/hide`, { cookie });
+    const deleted = await request('DELETE', url(tag), { cookie });
+    assert.equal(deleted.status, 200);
+    assert.equal(deleted.json.deletedCount, 3);
+    for (const c of [ended, hidden, visible]) assert.equal(await exists(c), false);
+    assert.ok(await exists(otherTag));
+    assert.ok(await exists(untagged));
+
+    // Each record is logged, and cannot be rolled back
+    for (const c of [ended, hidden, visible]) {
+      const logs = await request('GET', `/api/admin/logs?conferenceId=${c.id}`, { cookie });
+      const log = logs.json.logs.find((l) => l.action === 'delete');
+      assert.equal(log.beforeData.id, c.id);
+      assert.equal((await request('POST', `/api/admin/logs/${log.id}/rollback`, { cookie })).status, 400);
+    }
+
+    assert.equal((await request('DELETE', url(tag), { cookie })).status, 404);
+  });
+
   it('permanent delete is admin-only, logged, and cannot be rolled back', async () => {
     const adminLogin = await request('POST', '/api/auth/login', {
       body: { username: 'root', password: 'toor' },

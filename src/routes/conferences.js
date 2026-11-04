@@ -173,6 +173,17 @@ router.post('/:id/unhide', requireAdmin, (req, res) => {
   }
 });
 
+/** DELETE /api/conferences/by-tag/:tag — permanently delete a tag whose records are all hidden or ended (admin only) */
+router.delete('/by-tag/:tag', requireAdmin, (req, res) => {
+  try {
+    const deleted = conferences.deleteHiddenByTag(req.params.tag, req.user.id);
+    emitUpdate('delete', null);
+    res.json({ ok: true, deletedCount: deleted.length });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
 /** DELETE /api/conferences/:id — permanent delete (admin only) */
 router.delete('/:id', requireAdmin, (req, res) => {
   try {

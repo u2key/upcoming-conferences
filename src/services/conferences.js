@@ -314,6 +314,36 @@ function deleteById(id, userId) {
   return toPublic(existing);
 }
 
+/**
+ * Permanently delete all records of a tag, each logged like a single delete.
+ * Refuses the whole operation if any record is still shown in the public list
+ * (not hidden and not ended), so a record added since the caller looked is safe.
+ */
+function deleteHiddenByTag(tag, userId) {
+  if (!tag) {
+    const err = new Error('タグを指定してください');
+    err.status = 400;
+    throw err;
+  }
+  const db = getDb();
+  const today = new Date().toISOString().slice(0, 10);
+  return db.transaction(() => {
+    const rows = db.prepare('SELECT * FROM conferences WHERE tag = ?').all(tag);
+    if (!rows.length) {
+      const err = new Error('このタグの学会が見つかりません');
+      err.status = 404;
+      throw err;
+    }
+    const isVisible = (r) => !r.is_hidden && !(r.end_date && r.end_date.slice(0, 10) < today);
+    if (rows.some(isVisible)) {
+      const err = new Error('表示中の学会が含まれるタグは一括削除できません');
+      err.status = 409;
+      throw err;
+    }
+    return rows.map((r) => deleteById(r.id, userId));
+  })();
+}
+
 module.exports = {
   toPublic,
   getById,
@@ -324,5 +354,6 @@ module.exports = {
   setHidden,
   restoreFromSnapshot,
   deleteById,
+  deleteHiddenByTag,
   COLUMNS,
 };
