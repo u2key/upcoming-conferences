@@ -1,13 +1,18 @@
 (function(){ 'use strict';
 
 if (window.self !== window.top) {
-  document.addEventListener('click', function(e) {
-    const link = e.target.closest('a');
-    if (link && !link.hasAttribute('target')) {
-      link.target = '_blank';
-    }
-  });
-  document.getElementById("site-header").style.display = 'none';
+  // Only the main page has this id. Sub-pages are framed only when popups are
+  // blocked, so they keep their header and their links stay in the frame.
+  const siteHeader = document.getElementById("site-header");
+  if (siteHeader) {
+    document.addEventListener('click', function(e) {
+      const link = e.target.closest('a');
+      if (link && !link.hasAttribute('target')) {
+        link.target = '_blank';
+      }
+    });
+    siteHeader.style.display = 'none';
+  }
   [].slice.call(document.querySelectorAll(".container")).forEach(e=>e.style.maxWidth='unset');
 }
 

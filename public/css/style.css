@@ -122,6 +122,9 @@ a:hover {
   text-decoration: none;
   line-height: 1.25;
 }
+.btn[hidden] {
+  display: none;
+}
 .btn:hover {
   background: var(--primary-hover);
   text-decoration: none;
@@ -566,6 +569,16 @@ table.data thead th[data-sort-key] {
   font-size: 0.85rem;
   margin-left: 0.25rem;
   color: var(--muted);
+}
+
+/* Login links for anonymous viewers of the embedded (iframe) page */
+.embed-auth {
+  display: inline-flex;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+.embed-auth[hidden] {
+  display: none;
 }
 
 /* Limit width of the sort dropdown to avoid overflowing off-screen */

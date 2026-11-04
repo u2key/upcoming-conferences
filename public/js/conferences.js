@@ -470,6 +470,18 @@ function setupEditorUI() {
   const addBtn1 = document.getElementById('btn-add-conference1');
   const addBtn2 = document.getElementById('btn-add-conference2');
   const viewHiddenBtn = document.getElementById('btn-view-hidden');
+  const embedAuth = document.getElementById('embed-auth');
+  if (embedAuth) {
+    // The site header (with its login links) is removed inside an iframe, so
+    // anonymous embedded viewers get these links instead.
+    embedAuth.hidden = !!currentUser || window.self === window.top;
+    embedAuth.addEventListener('click', (e) => {
+      const link = e.target.closest('a');
+      if (!link) return;
+      e.preventDefault();
+      openInNewContext(link.href);
+    });
+  }
   if (addBtn1) {
     // Always attach handler: redirect viewers to login, editors open the modal
     addBtn1.addEventListener('click', () => {
