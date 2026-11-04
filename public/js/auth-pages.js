@@ -19,15 +19,11 @@ async function setupLogin() {
     const password = form.elements.password.value;
 
     try {
-      const data = await api('/api/auth/login', {
+      await api('/api/auth/login', {
         method: 'POST',
         body: { username, password },
       });
-      if (data.user && data.user.isAdmin) {
-        location.href = '/admin.html';
-      } else {
-        location.href = '/';
-      }
+      location.href = '/';
     } catch (err) {
       errEl.textContent = err.message;
     }
