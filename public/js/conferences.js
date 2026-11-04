@@ -7,6 +7,8 @@ let currentUser = null;
 let allConferences = [];
 let sortKey = 'nextDeadline';
 let sortDir = 1; // 1 = asc, -1 = desc
+let missingTags = []; // tags whose records are all hidden or ended
+let formSnapshot = ''; // form contents when the edit modal was opened
 
 function deadlineCell(value, label, optional = false) {
   const cls = deadlineClass(value);
@@ -162,10 +164,33 @@ function detectAllHiddenTags(list) {
   return results;
 }
 
+/** Render the tag list opened from the "all records hidden" notice. */
+function renderMissingTagsModal() {
+  const body = document.getElementById('hidden-modal-body');
+  if (!missingTags.length) {
+    body.innerHTML = '<p class="hint">該当するタグはありません。</p>';
+    return;
+  }
+  const rows = missingTags.map((m) => {
+    const latest = m.latest;
+    const name = latest && latest.website ? `<a href="${escapeHtml(latest.website)}" target="_blank" rel="noopener noreferrer">${escapeHtml(latest.name)}</a>` : escapeHtml(latest && latest.name || m.tag);
+    const dates = escapeHtml((latest && [latest.startDate, latest.endDate].filter(Boolean).join(' ~ ')) || '日付未設定');
+    return `<tr data-tag="${escapeHtml(m.tag)}"><td>${name}</td><td>${escapeHtml(m.tag)}</td><td>${dates}</td><td class="actions"><button class="btn btn-sm" data-action="view-tag" data-tag="${escapeHtml(m.tag)}">過去の記録を見る</button></td></tr>`;
+  }).join('\n');
+  body.innerHTML = `
+    <div class="hidden-table-wrap">
+      <table class="hidden-list">
+        <thead><tr><th>代表名</th><th>タグ</th><th>日付</th><th>操作</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
 function renderAll(list) {
   // Detect tags where all records are non-visible and notify editors/admins
   try {
-    const missingTags = currentUser ? detectAllHiddenTags(list || []) : [];
+    missingTags = currentUser ? detectAllHiddenTags(list || []) : [];
     const noticeEl = document.getElementById('missing-next-notice');
     if (noticeEl) {
       if (missingTags.length) {
@@ -179,26 +204,8 @@ function renderAll(list) {
           const btn = document.getElementById('btn-open-missing-tags');
           if (btn) {
             btn.addEventListener('click', () => {
-              // Open modal listing all missing tags and allow per-tag drilldown
-              const backdrop = document.getElementById('hidden-modal-backdrop');
-              const body = document.getElementById('hidden-modal-body');
-              body.innerHTML = '<p class="hint">読み込み中…</p>';
-              backdrop.hidden = false;
-              // render a table grouped by tag
-              const rows = missingTags.map((m) => {
-                const latest = m.latest;
-                const name = latest && latest.website ? `<a href="${escapeHtml(latest.website)}" target="_blank" rel="noopener noreferrer">${escapeHtml(latest.name)}</a>` : escapeHtml(latest && latest.name || m.tag);
-                const dates = escapeHtml((latest && [latest.startDate, latest.endDate].filter(Boolean).join(' ~ ')) || '日付未設定');
-                return `<tr data-tag="${escapeHtml(m.tag)}"><td>${name}</td><td>${escapeHtml(m.tag)}</td><td>${dates}</td><td><button class="btn btn-sm" data-action="view-tag" data-tag="${escapeHtml(m.tag)}">過去の記録を見る</button></td></tr>`;
-              }).join('\n');
-              body.innerHTML = `
-                <div class="hidden-table-wrap">
-                  <table class="hidden-list">
-                    <thead><tr><th>代表名</th><th>タグ</th><th>日付</th><th>操作</th></tr></thead>
-                    <tbody>${rows}</tbody>
-                  </table>
-                </div>
-              `;
+              document.getElementById('hidden-modal-backdrop').hidden = false;
+              renderMissingTagsModal();
             });
           }
         }, 10);
@@ -387,12 +394,34 @@ function openModal(conference) {
     if (form.elements.tag) form.elements.tag.value = conference.tag || '';
   }
 
+  formSnapshot = JSON.stringify(formToBody(form));
   backdrop.hidden = false;
   form.elements.name.focus();
 }
 
 function closeModal() {
   document.getElementById('modal-backdrop').hidden = true;
+}
+
+/** Close the edit modal on user request, asking first if the form was changed. */
+function requestCloseModal() {
+  const form = document.getElementById('conf-form');
+  if (JSON.stringify(formToBody(form)) !== formSnapshot && !confirm('変更を破棄しますか？')) return;
+  closeModal();
+}
+
+/**
+ * Call `close` when the backdrop itself is clicked or tapped. The press must
+ * also start there, so dragging a text selection out of a field doesn't count.
+ */
+function closeOnBackdropClick(backdrop, close) {
+  let pressedBackdrop = false;
+  backdrop.addEventListener('pointerdown', (e) => {
+    pressedBackdrop = e.target === backdrop;
+  });
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop && pressedBackdrop) close();
+  });
 }
 
 function formToBody(form) {
@@ -429,6 +458,71 @@ async function onSubmitForm(e) {
   } catch (err) {
     errEl.textContent = err.message;
   }
+}
+
+/**
+ * In an iframe the host page may show only part of this document, so position:
+ * fixed alone can put a modal's buttons off screen. Keep modals within the part
+ * of the frame that is actually visible (works for cross-origin hosts too).
+ *
+ * Watching the whole document isn't enough: in a frame taller than the window,
+ * the visible ratio stays constant while the host scrolls, so no event fires.
+ * Thin bands down the page do cross the window edge as it scrolls. Only fully
+ * visible bands count, which errs on the side of staying inside the window.
+ */
+function fitModalsToVisibleFrame() {
+  if (window.self === window.top || !('IntersectionObserver' in window)) return;
+  const BAND_HEIGHT = 32;
+  const root = document.documentElement;
+  const visibleBands = new Set();
+
+  function applyVisibleArea() {
+    if (!visibleBands.size) return;
+    const rects = [...visibleBands].map((band) => band.getBoundingClientRect());
+    const top = Math.max(0, Math.min(...rects.map((r) => r.top)));
+    const bottom = Math.min(window.innerHeight, Math.max(...rects.map((r) => r.bottom)));
+    root.style.setProperty('--frame-hidden-top', `${top}px`);
+    root.style.setProperty('--frame-hidden-bottom', `${window.innerHeight - bottom}px`);
+    root.classList.add('frame-fitted');
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting && entry.intersectionRatio >= 1) visibleBands.add(entry.target);
+      else visibleBands.delete(entry.target);
+    });
+    applyVisibleArea();
+  }, { threshold: [0, 1] });
+
+  const layer = document.createElement('div');
+  layer.style.cssText = 'position:absolute;top:0;left:0;width:1px;visibility:hidden;pointer-events:none';
+  document.body.appendChild(layer);
+
+  function syncBands() {
+    // Round down: bands must never extend the page, or the height reported to
+    // the host would grow, resize the frame, and add more bands in a loop.
+    const count = Math.floor(Math.max(document.body.offsetHeight, window.innerHeight) / BAND_HEIGHT);
+    while (layer.children.length < count) {
+      const band = document.createElement('div');
+      band.style.cssText = `position:absolute;left:0;width:1px;height:${BAND_HEIGHT}px;top:${layer.children.length * BAND_HEIGHT}px`;
+      layer.appendChild(band);
+      observer.observe(band);
+    }
+    while (layer.children.length > count) {
+      const band = layer.lastElementChild;
+      observer.unobserve(band);
+      visibleBands.delete(band);
+      band.remove();
+    }
+  }
+
+  syncBands();
+  if ('ResizeObserver' in window) new ResizeObserver(syncBands).observe(document.body);
+  window.addEventListener('resize', () => {
+    syncBands();
+    applyVisibleArea();
+  });
+  window.addEventListener('scroll', applyVisibleArea, { passive: true });
 }
 
 /** Permanently delete after confirmation. Resolves true if the record was deleted. */
@@ -575,16 +669,17 @@ function setupEditorUI() {
 
   if (currentUser) {
     document.getElementById('conf-form').addEventListener('submit', onSubmitForm);
-    document.getElementById('btn-cancel-modal').addEventListener('click', closeModal);
-    document.getElementById('modal-backdrop').addEventListener('click', (e) => {
-      if (e.target.id === 'modal-backdrop') closeModal();
-    });
+    document.getElementById('btn-cancel-modal').addEventListener('click', requestCloseModal);
+    closeOnBackdropClick(document.getElementById('modal-backdrop'), requestCloseModal);
   }
 
   const closeHidden = document.getElementById('btn-close-hidden');
-  if (closeHidden) closeHidden.addEventListener('click', () => {
-    document.getElementById('hidden-modal-backdrop').hidden = true;
-  });
+  const hiddenBackdrop = document.getElementById('hidden-modal-backdrop');
+  const closeHiddenModal = () => {
+    hiddenBackdrop.hidden = true;
+  };
+  if (closeHidden) closeHidden.addEventListener('click', closeHiddenModal);
+  closeOnBackdropClick(hiddenBackdrop, closeHiddenModal);
 
   // Delegate click handling inside hidden modal for edit/unhide actions
   const hiddenBody = document.getElementById('hidden-modal-body');
@@ -658,6 +753,7 @@ function setupEditorUI() {
 }
 
 async function main() {
+  fitModalsToVisibleFrame();
   currentUser = await renderNavAuth();
   setupEditorUI();
   setupSorting();

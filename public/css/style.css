@@ -428,8 +428,39 @@ table.data .actions {
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
   width: min(560px, 100%);
   max-height: 90vh;
-  overflow: auto;
+  max-height: 90dvh; /* excludes mobile browser bars where supported */
+  /* Only the content scrolls, so the title and close/save buttons stay in view */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 1.35rem 1.4rem;
+}
+/* Inside an iframe: gray covers the frame, the modal stays in its visible part */
+.frame-fitted .modal-backdrop {
+  padding-top: calc(var(--frame-hidden-top) + 1rem);
+  padding-bottom: calc(var(--frame-hidden-bottom) + 1rem);
+}
+.frame-fitted .modal {
+  max-height: 100%;
+}
+.modal > form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.modal > form > .form-grid,
+#hidden-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+.modal > form > .form-grid {
+  padding: 2px; /* room for the focus outline inside the scroll area */
+}
+.modal-footer {
+  flex: none;
+  margin-top: 1rem;
+  text-align: right;
 }
 .modal h3 {
   margin: 0 0 1rem;
@@ -649,4 +680,18 @@ table.data thead th[data-sort-key] {
     table.hidden-list th, table.hidden-list td { padding: 0.45rem 0.5rem; font-size: 0.9rem; }
     table.hidden-list td.actions { display:flex; gap:0.4rem; }
   }
+}
+
+/* Tag and hidden lists in a modal: one card per row on phones, so the action
+   buttons wrap instead of running off the side */
+@media (max-width: 640px) {
+  table.hidden-list,
+  table.hidden-list tbody,
+  table.hidden-list tr,
+  table.hidden-list td { display: block; }
+  table.hidden-list thead { display: none; }
+  table.hidden-list tr { padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
+  table.hidden-list td { padding: 0.1rem 0; border-bottom: none; }
+  table.hidden-list td:first-child { font-weight: 600; }
+  table.hidden-list td.actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem; white-space: normal; }
 }
