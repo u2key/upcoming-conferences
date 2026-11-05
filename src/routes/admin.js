@@ -5,6 +5,7 @@ const applications = require('../services/applications');
 const audit = require('../services/audit');
 const conferences = require('../services/conferences');
 const mail = require('../services/mail');
+const notifications = require('../services/notifications');
 const users = require('../services/users');
 const { requireAdmin } = require('../middleware/auth');
 
@@ -114,6 +115,24 @@ router.post('/logs/:id/rollback', (req, res) => {
       console.warn('[socket] broadcast failed:', e.message);
     }
     res.json(result);
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+/** GET /api/admin/notifications — preview of the notification mail, recipients and history */
+router.get('/notifications', (_req, res) => {
+  try {
+    res.json(notifications.getStatus());
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+/** POST /api/admin/notifications/send */
+router.post('/notifications/send', async (req, res) => {
+  try {
+    res.json(await notifications.sendNow(req.user.id));
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
   }

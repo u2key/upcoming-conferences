@@ -139,11 +139,26 @@ async function renderNavAuth() {
   return user;
 }
 
+/**
+ * Call `close` when a modal backdrop itself is clicked or tapped. The press must
+ * also start there, so dragging a text selection out of a field doesn't count.
+ */
+function closeOnBackdropClick(backdrop, close) {
+  let pressedBackdrop = false;
+  backdrop.addEventListener('pointerdown', (e) => {
+    pressedBackdrop = e.target === backdrop;
+  });
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop && pressedBackdrop) close();
+  });
+}
+
 window.UCCommon = {
   formatDate,
   deadlineClass,
   scheduleDailyReload,
   escapeHtml,
   renderNavAuth,
+  closeOnBackdropClick,
 };
 })();

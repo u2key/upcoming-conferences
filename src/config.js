@@ -28,6 +28,11 @@ module.exports = {
   crossSiteCookies: process.env.CROSS_SITE_COOKIES === 'true',
   /** Whether to append Partitioned attribute to cookies (CHIPS). Not universally supported; enable if desired. */
   cookiePartitioned: process.env.COOKIE_PARTITIONED === 'true',
+  /** Monthly notification mail: sent on the first Monday from this hour, in this time zone. */
+  notification: {
+    timeZone: process.env.NOTIFICATION_TIMEZONE || 'Asia/Tokyo',
+    hour: parseInt(process.env.NOTIFICATION_HOUR || '9', 10),
+  },
   /** Operation logs older than this many days are purged. */
   logRetentionDays: 90,
 };

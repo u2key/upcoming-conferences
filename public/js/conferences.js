@@ -1,7 +1,7 @@
 'use strict';
 
 const { api } = window.UCApi;
-const { formatDate, deadlineClass, scheduleDailyReload, escapeHtml, renderNavAuth } = window.UCCommon;
+const { formatDate, deadlineClass, scheduleDailyReload, escapeHtml, renderNavAuth, closeOnBackdropClick } = window.UCCommon;
 
 let currentUser = null;
 let allConferences = [];
@@ -436,19 +436,6 @@ function requestCloseModal() {
   closeModal();
 }
 
-/**
- * Call `close` when the backdrop itself is clicked or tapped. The press must
- * also start there, so dragging a text selection out of a field doesn't count.
- */
-function closeOnBackdropClick(backdrop, close) {
-  let pressedBackdrop = false;
-  backdrop.addEventListener('pointerdown', (e) => {
-    pressedBackdrop = e.target === backdrop;
-  });
-  backdrop.addEventListener('click', (e) => {
-    if (e.target === backdrop && pressedBackdrop) close();
-  });
-}
 
 function formToBody(form) {
   return {
@@ -590,6 +577,27 @@ function setupEditorUI() {
   const addBtn1 = document.getElementById('btn-add-conference1');
   const addBtn2 = document.getElementById('btn-add-conference2');
   const viewHiddenBtn = document.getElementById('btn-view-hidden');
+  const notifyToggle = document.getElementById('notify-toggle');
+  if (notifyToggle && currentUser) {
+    const checkbox = document.getElementById('notify-checkbox');
+    checkbox.checked = currentUser.notifyEmail;
+    notifyToggle.hidden = false;
+    checkbox.addEventListener('change', async () => {
+      checkbox.disabled = true;
+      try {
+        const res = await api('/api/auth/notification-preference', {
+          method: 'PUT',
+          body: { notifyEmail: checkbox.checked },
+        });
+        currentUser = res.user;
+      } catch (err) {
+        checkbox.checked = !checkbox.checked;
+        alert(err.message);
+      } finally {
+        checkbox.disabled = false;
+      }
+    });
+  }
   const embedAuth = document.getElementById('embed-auth');
   if (embedAuth) {
     // The site header (with its login links) is removed inside an iframe, so

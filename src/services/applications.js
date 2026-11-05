@@ -14,6 +14,7 @@ function toPublic(row) {
     username: row.username,
     status: row.status,
     isHidden: !!row.is_hidden,
+    notifyEmail: !!row.notify_email,
     createdAt: row.created_at,
     reviewedAt: row.reviewed_at,
     reviewedBy: row.reviewed_by,
@@ -24,7 +25,7 @@ function toPublic(row) {
  * Submit a new account application.
  * Collects email, name, affiliation, plus username/password for later login.
  */
-function submitApplication({ email, fullName, affiliation, username, password }) {
+function submitApplication({ email, fullName, affiliation, username, password, notifyEmail = true }) {
   if (!email || !fullName || !affiliation || !username || !password) {
     const err = new Error('メールアドレス・氏名・所属・ユーザ名・パスワードは必須です');
     err.status = 400;
@@ -62,10 +63,10 @@ function submitApplication({ email, fullName, affiliation, username, password })
   const result = db
     .prepare(
       `INSERT INTO account_applications
-         (email, full_name, affiliation, username, password_hash, status)
-       VALUES (?, ?, ?, ?, ?, 'pending')`
+         (email, full_name, affiliation, username, password_hash, status, notify_email)
+       VALUES (?, ?, ?, ?, ?, 'pending', ?)`
     )
-    .run(emailNorm, fullName.trim(), affiliation.trim(), usernameNorm, passwordHash);
+    .run(emailNorm, fullName.trim(), affiliation.trim(), usernameNorm, passwordHash, notifyEmail === false ? 0 : 1);
 
   const appRow = db.prepare('SELECT * FROM account_applications WHERE id = ?').get(result.lastInsertRowid);
   const publicApp = toPublic(appRow);
@@ -161,6 +162,7 @@ function approveApplication(id, reviewerId) {
       fullName: app.full_name,
       affiliation: app.affiliation,
       isAdmin: false,
+      notifyEmail: !!app.notify_email,
     });
 
     db.prepare(

@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
   affiliation TEXT NOT NULL DEFAULT '',
   is_admin INTEGER NOT NULL DEFAULT 0,
   is_active INTEGER NOT NULL DEFAULT 1,
+  notify_email INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -24,6 +25,7 @@ CREATE TABLE IF NOT EXISTS account_applications (
     CHECK (status IN ('pending', 'approved', 'rejected')),
   -- rejected applications can be hidden from the admin console
   is_hidden INTEGER NOT NULL DEFAULT 0,
+  notify_email INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   reviewed_at TEXT,
   reviewed_by INTEGER,
@@ -76,6 +78,20 @@ CREATE INDEX IF NOT EXISTS idx_operation_logs_created
 
 CREATE INDEX IF NOT EXISTS idx_operation_logs_conference
   ON operation_logs(conference_id);
+
+-- sends of the "please register conferences" notification mail
+CREATE TABLE IF NOT EXISTS notification_runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind TEXT NOT NULL CHECK (kind IN ('auto', 'manual')),
+  -- 'YYYY-MM' for automatic sends, so a month can only be claimed once
+  period TEXT UNIQUE,
+  triggered_by INTEGER,
+  tag_count INTEGER NOT NULL DEFAULT 0,
+  sent_count INTEGER NOT NULL DEFAULT 0,
+  failed_count INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (triggered_by) REFERENCES users(id)
+);
 
 -- express-session store (connect-sqlite3 compatible shape, managed manually)
 CREATE TABLE IF NOT EXISTS sessions (

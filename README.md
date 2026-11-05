@@ -11,6 +11,7 @@
 - アカウント申請 → 管理者承認（承認/パスワードリセット時にメール送信）
 - 編集者は学会の追加・修正のみ可能（非表示レコードは API で読み取り可、変更操作は不可）
 - 学会はタグ（tag）で識別。タグ単位で「全レコードが非表示」の場合に通知を表示
+- 未登録の学会の登録を促す通知メール（毎月第1月曜日に自動送信、管理コンソールからプレビュー付きで手動送信。受信はユーザごとに選択可能でデフォルトはオン）
 - サーバ側で SameSite=None; Secure 指定のクロスサイト cookie を有効化可能（iframe 埋め込み対応）
 - 生データ出力 API: `/api/conferences/export`（JSON/NDJSON, CORS 対応）
 - Socket.io によるリアルタイム更新、SQLite3 による永続化、操作ログ（90日）
@@ -59,6 +60,10 @@ SMTP / メール関連
 クロスサイト cookie（iframe 埋め込み時）
 - CROSS_SITE_COOKIES=true   # SameSite=None; Secure を付与（secure=true も有効化）
 - COOKIE_PARTITIONED=true   # オプション: Partitioned 属性を Set-Cookie に付与（実験的）
+
+通知メール
+- NOTIFICATION_TIMEZONE=Asia/Tokyo   # 第1月曜日の判定に使うタイムゾーン
+- NOTIFICATION_HOUR=9                # 自動送信を開始する時刻（時）
 
 備考: SMTP_* を未設定にすると開発用にメールは console.log に出力されます。
 
@@ -150,6 +155,15 @@ GET /api/conferences/export
 - POST `/api/conferences/:id/unhide` — 再表示（管理者のみ）
 - DELETE `/api/conferences/:id` — 恒久削除（管理者のみ。操作ログに記録、ロールバック不可）
 - DELETE `/api/conferences/by-tag/:tag` — タグ単位の一括恒久削除（管理者のみ。全レコードが非表示または終了済みのタグに限る。表示中のレコードがあれば 409。各レコードを操作ログに記録）
+
+- PUT `/api/auth/notification-preference` — 自分の通知メールの受信設定（認証。`{ "notifyEmail": true|false }`）
+- GET `/api/admin/notifications` — 通知メールのプレビュー・受信者・送信履歴（管理者のみ。送信はしない）
+- POST `/api/admin/notifications/send` — 通知メールの手動送信（管理者のみ。未登録タグまたは受信者がなければ 409）
+
+通知メールの自動送信:
+- 第1月曜日の NOTIFICATION_HOUR 時以降に送信します。送信済みの月は `notification_runs` に記録し、再起動しても二重送信しません。
+- その日にサーバが停止していた月は、後から送信しません（翌月まで待ちます）。
+- 未登録の学会タグがなければメールは送りません。
 
 認証・権限の注意:
 - 編集者が行える変更は追加（POST）と修正（PUT）のみ

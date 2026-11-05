@@ -48,6 +48,7 @@ async function setupRegister() {
       affiliation: form.elements.affiliation.value.trim(),
       username: form.elements.username.value.trim(),
       password: form.elements.password.value,
+      notifyEmail: form.elements.notifyEmail.checked,
     };
 
     if (form.elements.passwordConfirm.value !== body.password) {

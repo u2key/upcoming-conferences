@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const { getDb } = require('../db/database');
 
 const PUBLIC_FIELDS =
-  'id, username, email, full_name, affiliation, is_admin, is_active, created_at, updated_at';
+  'id, username, email, full_name, affiliation, is_admin, is_active, notify_email, created_at, updated_at';
 
 function toPublic(row) {
   if (!row) return null;
@@ -16,6 +16,7 @@ function toPublic(row) {
     affiliation: row.affiliation,
     isAdmin: !!row.is_admin,
     isActive: !!row.is_active,
+    notifyEmail: !!row.notify_email,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -70,14 +71,14 @@ function authenticate(username, password) {
 /**
  * Create an active user account (used after application approval).
  */
-function createUser({ username, email, passwordHash, fullName, affiliation, isAdmin = false }) {
+function createUser({ username, email, passwordHash, fullName, affiliation, isAdmin = false, notifyEmail = true }) {
   const db = getDb();
   const result = db
     .prepare(
-      `INSERT INTO users (username, email, password_hash, full_name, affiliation, is_admin, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, 1)`
+      `INSERT INTO users (username, email, password_hash, full_name, affiliation, is_admin, is_active, notify_email)
+       VALUES (?, ?, ?, ?, ?, ?, 1, ?)`
     )
-    .run(username, email, passwordHash, fullName, affiliation, isAdmin ? 1 : 0);
+    .run(username, email, passwordHash, fullName, affiliation, isAdmin ? 1 : 0, notifyEmail ? 1 : 0);
   return findById(result.lastInsertRowid);
 }
 
@@ -99,6 +100,12 @@ function setAdmin(userId, isAdmin) {
   return findById(userId);
 }
 
+function setNotifyEmail(userId, enabled) {
+  const db = getDb();
+  db.prepare('UPDATE users SET notify_email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(enabled ? 1 : 0, userId);
+  return findById(userId);
+}
+
 module.exports = {
   toPublic,
   findById,
@@ -106,6 +113,7 @@ module.exports = {
   verifyPassword,
   updatePassword,
   setAdmin,
+  setNotifyEmail,
   findByUsername,
   findByEmail,
   authenticate,

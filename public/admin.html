@@ -27,6 +27,7 @@
         <button type="button" class="tab active" data-panel="panel-applications">アカウント申請</button>
         <button type="button" class="tab" data-panel="panel-logs">操作ログ</button>
         <button type="button" class="tab" data-panel="panel-users">ユーザ一覧</button>
+        <button type="button" class="tab" data-panel="panel-notifications">通知メール</button>
       </div>
 
       <!-- Applications -->
@@ -105,8 +106,47 @@
           </table>
         </div>
       </div>
+
+      <!-- Notification mail -->
+      <div class="tab-panel" id="panel-notifications" hidden>
+        <p class="hint">
+          全記録が終了または非表示になった学会タグについて、次回の情報の登録をお願いするメールを、
+          受信をオンにしているユーザへ送ります。毎月第1月曜日に自動で送信され、下のボタンからも送信できます。
+        </p>
+        <div id="notify-summary" class="notify-summary"><p class="hint">読み込み中…</p></div>
+        <button type="button" class="btn" id="btn-notify-preview">通知を送信</button>
+        <h2 style="font-size:1rem;margin:1.25rem 0 0.5rem;">送信履歴</h2>
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>日時</th>
+                <th>種別</th>
+                <th>学会タグ</th>
+                <th>送信</th>
+                <th>失敗</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-notify-runs">
+              <tr><td colspan="5" class="empty">読み込み中…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </main>
+
+  <!-- Notification mail preview -->
+  <div class="modal-backdrop" id="notify-modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="notify-modal-title">
+      <h3 id="notify-modal-title">通知メールのプレビュー</h3>
+      <div class="modal-body" id="notify-modal-body"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn" id="btn-notify-send">この内容で送信</button>
+        <button type="button" class="btn btn-secondary" id="btn-notify-cancel">キャンセル</button>
+      </div>
+    </div>
+  </div>
 
   <script src="/js/api.js"></script>
   <script src="/js/common.js"></script>

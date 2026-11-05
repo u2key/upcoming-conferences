@@ -123,9 +123,15 @@ async function sendApplicationSubmittedNotification(application) {
   });
 }
 
+/** Ask a user to register conferences. The caller builds the message, which differs per user. */
+async function sendConferenceRegistrationNotification({ email, subject, text }) {
+  await getTransporter().sendMail({ from: config.mail.from, to: email, subject, text });
+}
+
 module.exports = {
   getTransporter,
   sendApprovalNotification,
   sendPasswordResetNotification,
   sendApplicationSubmittedNotification,
+  sendConferenceRegistrationNotification,
 };

@@ -96,7 +96,8 @@ describe('database', () => {
     const Database = require('better-sqlite3');
     const config = require('../src/config');
     const schema = fs.readFileSync(path.join(__dirname, '../src/db/schema.sql'), 'utf8');
-    const oldSchema = schema.replace(", 'delete'))", '))');
+    const oldSchema = schema.replace(", 'delete'))", '))').replace(/^\s*notify_email .*\n/gm, '');
+    assert.ok(!oldSchema.includes('notify_email'));
     assert.notEqual(oldSchema, schema);
 
     const oldPath = path.join(tmpDir, 'old.db');
@@ -131,6 +132,11 @@ describe('database', () => {
         },
       ]);
       db.prepare(`INSERT INTO operation_logs (user_id, action) VALUES (7, 'delete')`).run();
+
+      // Existing users default to receiving the notification mail
+      assert.equal(db.prepare('SELECT notify_email FROM users WHERE id = 7').get().notify_email, 1);
+      const applicationColumns = db.prepare(`PRAGMA table_info('account_applications')`).all();
+      assert.ok(applicationColumns.some((c) => c.name === 'notify_email'));
 
       const names = db.prepare(`SELECT name FROM sqlite_master`).all().map((r) => r.name);
       assert.ok(names.includes('idx_operation_logs_created'));

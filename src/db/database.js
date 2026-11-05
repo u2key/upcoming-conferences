@@ -66,6 +66,12 @@ function getDb() {
       // Add tag column (identifier) to help reliably group recurring conferences
       db.prepare("ALTER TABLE conferences ADD COLUMN tag TEXT NOT NULL DEFAULT ''").run();
     }
+    for (const table of ['users', 'account_applications']) {
+      const columns = db.prepare(`PRAGMA table_info('${table}')`).all().map((r) => r.name);
+      if (!columns.includes('notify_email')) {
+        db.prepare(`ALTER TABLE ${table} ADD COLUMN notify_email INTEGER NOT NULL DEFAULT 1`).run();
+      }
+    }
     migrateOperationLogsActions(db, schema);
   } catch (e) {
     // Migration failures should not crash startup; log and continue

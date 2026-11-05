@@ -41,13 +41,14 @@ router.get('/me', (req, res) => {
 /** POST /api/auth/register — account application */
 router.post('/register', (req, res) => {
   try {
-    const { email, fullName, affiliation, username, password } = req.body || {};
+    const { email, fullName, affiliation, username, password, notifyEmail } = req.body || {};
     const application = applications.submitApplication({
       email,
       fullName,
       affiliation,
       username,
       password,
+      notifyEmail,
     });
     res.status(201).json({
       application: {
@@ -69,6 +70,19 @@ router.post('/register', (req, res) => {
 /** GET /api/auth/session-check (auth required convenience) */
 router.get('/session-check', requireAuth, (req, res) => {
   res.json({ user: req.user });
+});
+
+/** PUT /api/auth/notification-preference — body: { notifyEmail: boolean } */
+router.put('/notification-preference', requireAuth, (req, res) => {
+  try {
+    const { notifyEmail } = req.body || {};
+    if (typeof notifyEmail !== 'boolean') {
+      return res.status(400).json({ error: 'notifyEmail は true または false です' });
+    }
+    res.json({ user: users.setNotifyEmail(req.user.id, notifyEmail) });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
 });
 
 /** POST /api/auth/change-password */

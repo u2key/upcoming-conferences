@@ -12,6 +12,7 @@ const { ensureAdmin } = require('./db/init');
 const SqliteSessionStore = require('./middleware/session-store');
 const { loadUser } = require('./middleware/auth');
 const { attachSocket } = require('./socket');
+const notifications = require('./services/notifications');
 
 const authRoutes = require('./routes/auth');
 const conferenceRoutes = require('./routes/conferences');
@@ -105,6 +106,7 @@ function start() {
     console.log(`upcoming-conferences listening on http://localhost:${config.port}`);
     console.log(`  env=${config.nodeEnv}  db=${config.dbPath}`);
   });
+  notifications.startScheduler();
 }
 
 if (require.main === module) {

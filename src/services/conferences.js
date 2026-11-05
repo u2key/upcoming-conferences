@@ -314,6 +314,34 @@ function deleteById(id, userId) {
   return toPublic(existing);
 }
 
+/** Whether a row appears in the public list: neither hidden nor ended (dates compared in UTC). */
+function isShownInPublicList(row) {
+  const today = new Date().toISOString().slice(0, 10);
+  return !row.is_hidden && !(row.end_date && row.end_date.slice(0, 10) < today);
+}
+
+/**
+ * Tags whose records are all hidden or ended, meaning the next instance of the
+ * conference series is not registered yet. `latest` is the most recent raw row.
+ * @returns {{ tag: string, latest: object }[]}
+ */
+function listMissingTags() {
+  const rows = getDb().prepare(`SELECT * FROM conferences WHERE tag <> '' ORDER BY tag`).all();
+  const groups = new Map();
+  for (const row of rows) {
+    if (!groups.has(row.tag)) groups.set(row.tag, []);
+    groups.get(row.tag).push(row);
+  }
+  const dateOf = (row) => (row.start_date || row.end_date || '').slice(0, 10);
+  const missing = [];
+  for (const [tag, items] of groups) {
+    if (items.some(isShownInPublicList)) continue;
+    const latest = items.reduce((a, b) => (dateOf(b) >= dateOf(a) ? b : a));
+    missing.push({ tag, latest });
+  }
+  return missing;
+}
+
 /**
  * Permanently delete all records of a tag, each logged like a single delete.
  * Refuses the whole operation if any record is still shown in the public list
@@ -326,7 +354,6 @@ function deleteHiddenByTag(tag, userId) {
     throw err;
   }
   const db = getDb();
-  const today = new Date().toISOString().slice(0, 10);
   return db.transaction(() => {
     const rows = db.prepare('SELECT * FROM conferences WHERE tag = ?').all(tag);
     if (!rows.length) {
@@ -334,8 +361,7 @@ function deleteHiddenByTag(tag, userId) {
       err.status = 404;
       throw err;
     }
-    const isVisible = (r) => !r.is_hidden && !(r.end_date && r.end_date.slice(0, 10) < today);
-    if (rows.some(isVisible)) {
+    if (rows.some(isShownInPublicList)) {
       const err = new Error('表示中の学会が含まれるタグは一括削除できません');
       err.status = 409;
       throw err;
@@ -355,5 +381,6 @@ module.exports = {
   restoreFromSnapshot,
   deleteById,
   deleteHiddenByTag,
+  listMissingTags,
   COLUMNS,
 };

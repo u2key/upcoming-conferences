@@ -1,7 +1,7 @@
 'use strict';
 
 const { api } = window.UCApi;
-const { formatDate, escapeHtml, renderNavAuth } = window.UCCommon;
+const { formatDate, escapeHtml, renderNavAuth, closeOnBackdropClick } = window.UCCommon;
 
 let includeHidden = false;
 
@@ -29,6 +29,7 @@ function setupTabs() {
       if (tab.dataset.panel === 'panel-applications') loadApplications();
       if (tab.dataset.panel === 'panel-logs') loadLogs();
       if (tab.dataset.panel === 'panel-users') loadUsers();
+      if (tab.dataset.panel === 'panel-notifications') loadNotifications();
     });
   });
 }
@@ -216,6 +217,106 @@ async function loadUsers() {
   }
 }
 
+/* ---------- Notification mail ---------- */
+function formatUtcDateTime(value) {
+  const date = new Date(`${String(value).replace(' ', 'T')}Z`);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('ja-JP');
+}
+
+async function loadNotifications() {
+  const summary = document.getElementById('notify-summary');
+  const tbody = document.getElementById('tbody-notify-runs');
+  try {
+    const status = await api('/api/admin/notifications');
+    summary.innerHTML = `
+      <p>未登録の学会タグ: <strong>${status.tagCount}</strong> 件 / 受信者: <strong>${status.recipients.length}</strong> 人</p>
+      <p class="hint">次回の自動送信: ${escapeHtml(status.nextAutoSend)}（${escapeHtml(status.timeZone)}）</p>`;
+    tbody.innerHTML = status.runs.length
+      ? status.runs
+          .map(
+            (r) => `
+          <tr>
+            <td>${escapeHtml(formatUtcDateTime(r.createdAt))}</td>
+            <td>${r.kind === 'auto' ? '自動' : `手動（${escapeHtml(r.username || '—')}）`}</td>
+            <td>${r.tagCount}</td>
+            <td>${r.sentCount}</td>
+            <td>${r.failedCount}</td>
+          </tr>`
+          )
+          .join('')
+      : '<tr><td colspan="5" class="empty">送信履歴はありません</td></tr>';
+  } catch (err) {
+    summary.innerHTML = `<p class="form-error">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+function setupNotifications() {
+  const backdrop = document.getElementById('notify-modal-backdrop');
+  const body = document.getElementById('notify-modal-body');
+  const sendBtn = document.getElementById('btn-notify-send');
+  const previewBtn = document.getElementById('btn-notify-preview');
+  let isSending = false;
+
+  const close = () => {
+    if (!isSending) backdrop.hidden = true;
+  };
+
+  previewBtn.addEventListener('click', async () => {
+    previewBtn.disabled = true;
+    try {
+      const status = await api('/api/admin/notifications');
+      const blocker = !status.tagCount
+        ? '未登録の学会タグがないため、送信する内容がありません。'
+        : !status.recipients.length
+          ? '通知を受け取るユーザがいません。'
+          : '';
+      body.innerHTML = `
+        ${blocker ? `<p class="flash flash-error">${blocker}</p>` : ''}
+        <p class="hint">件名</p>
+        <p class="mail-subject">${escapeHtml(status.subject)}</p>
+        <p class="hint">本文（宛名は受信者ごとのユーザ名になります）</p>
+        <pre class="mail-preview">${escapeHtml(status.text)}</pre>
+        <p class="hint">受信者（${status.recipients.length} 人）</p>
+        <p>${escapeHtml(status.recipients.join(', ')) || '—'}</p>`;
+      sendBtn.disabled = !!blocker;
+      backdrop.hidden = false;
+      body.scrollTop = 0;
+    } catch (err) {
+      showFlash(err.message, false);
+    } finally {
+      previewBtn.disabled = false;
+    }
+  });
+
+  sendBtn.addEventListener('click', async () => {
+    isSending = true;
+    sendBtn.disabled = true;
+    sendBtn.textContent = '送信中…';
+    try {
+      const res = await api('/api/admin/notifications/send', { method: 'POST' });
+      showFlash(
+        res.failed.length
+          ? `${res.sentCount} 人に送信しました。送信失敗: ${res.failed.join(', ')}`
+          : `${res.sentCount} 人に送信しました`,
+        !res.failed.length
+      );
+    } catch (err) {
+      showFlash(err.message, false);
+    } finally {
+      isSending = false;
+      sendBtn.textContent = 'この内容で送信';
+      close();
+      loadNotifications();
+    }
+  });
+
+  document.getElementById('btn-notify-cancel').addEventListener('click', close);
+  closeOnBackdropClick(backdrop, close);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !backdrop.hidden) close();
+  });
+}
+
 async function main() {
   const user = await renderNavAuth();
   if (!user || !user.isAdmin) {
@@ -228,6 +329,7 @@ async function main() {
   }
 
   setupTabs();
+  setupNotifications();
   document
     .getElementById('tbody-applications')
     .addEventListener('click', onApplicationAction);

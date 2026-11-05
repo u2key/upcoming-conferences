@@ -449,6 +449,7 @@ table.data .actions {
   min-height: 0;
 }
 .modal > form > .form-grid,
+.modal-body,
 #hidden-modal-body {
   flex: 1 1 auto;
   min-height: 0;
@@ -456,6 +457,24 @@ table.data .actions {
 }
 .modal > form > .form-grid {
   padding: 2px; /* room for the focus outline inside the scroll area */
+}
+.mail-subject {
+  margin: 0.15rem 0 0.75rem;
+  font-weight: 600;
+}
+.mail-preview {
+  margin: 0.15rem 0 0.75rem;
+  padding: 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.notify-summary p {
+  margin: 0.5rem 0;
 }
 .modal-footer {
   flex: none;
@@ -500,6 +519,13 @@ table.data .actions {
   gap: 0.5rem;
   font-size: 0.85rem;
   color: var(--muted);
+}
+.toggle-row[hidden] {
+  display: none;
+}
+.notify-toggle {
+  margin-left: auto;
+  cursor: pointer;
 }
 
 .flash {
