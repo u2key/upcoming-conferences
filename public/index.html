@@ -31,6 +31,7 @@
         <option value="endDate">終了日</option>
       </select>
       <button id="btn-view-hidden" class="btn btn-secondary btn-sm" hidden style="margin-left:0.6rem">非表示学会を表示</button>
+      <button id="btn-calendar" type="button" class="btn btn-secondary btn-sm">カレンダーに追加</button>
       <label id="notify-toggle" class="toggle-row notify-toggle" hidden>
         <input type="checkbox" id="notify-checkbox" />
         未登録の学会の通知メールを受け取る
@@ -178,6 +179,47 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" id="btn-close-hidden">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Calendar subscription modal -->
+  <div class="modal-backdrop" id="calendar-modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="calendar-modal-title">
+      <h3 id="calendar-modal-title">カレンダーに追加</h3>
+      <div class="modal-body">
+        <p class="hint">締切と開催期間をカレンダーアプリで購読できます。登録した学会の追加や変更は自動で反映されます。</p>
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="calendar-type">区分</label>
+            <select id="calendar-type">
+              <option value="">国内と国際</option>
+              <option value="domestic">国内会議のみ</option>
+              <option value="international">国際会議のみ</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="calendar-include">内容</label>
+            <select id="calendar-include">
+              <option value="">締切と開催期間</option>
+              <option value="deadlines">締切のみ</option>
+              <option value="dates">開催期間のみ</option>
+            </select>
+          </div>
+          <div class="form-field full">
+            <label for="calendar-url">配信URL</label>
+            <input id="calendar-url" type="text" readonly />
+          </div>
+        </div>
+        <div class="calendar-actions">
+          <a id="calendar-google" class="btn" target="_blank" rel="noopener noreferrer">Googleカレンダーに追加</a>
+          <button type="button" class="btn btn-secondary" id="btn-calendar-copy">URLをコピー</button>
+        </div>
+        <p class="hint">Apple カレンダーや Outlook では、配信URLを購読先として登録してください。</p>
+        <p class="hint">反映のタイミングはカレンダーアプリによります。Googleカレンダーでは半日ほどかかることがあるので、直前の締切は公式サイトで確認してください。</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-close-calendar">閉じる</button>
       </div>
     </div>
   </div>

@@ -573,6 +573,50 @@ function onTableClick(e) {
   }
 }
 
+/** The dialog that builds a subscription URL for calendar apps. */
+function setupCalendarModal() {
+  const backdrop = document.getElementById('calendar-modal-backdrop');
+  const typeSelect = document.getElementById('calendar-type');
+  const includeSelect = document.getElementById('calendar-include');
+  const urlInput = document.getElementById('calendar-url');
+  const copyBtn = document.getElementById('btn-calendar-copy');
+
+  function update() {
+    const params = new URLSearchParams();
+    if (typeSelect.value) params.set('type', typeSelect.value);
+    if (includeSelect.value) params.set('include', includeSelect.value);
+    const query = params.toString();
+    urlInput.value = `${location.origin}/api/conferences/calendar.ics${query ? `?${query}` : ''}`;
+    document.getElementById('calendar-google').href =
+      `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(urlInput.value)}`;
+    copyBtn.textContent = 'URLをコピー';
+  }
+
+  document.getElementById('btn-calendar').addEventListener('click', () => {
+    update();
+    backdrop.hidden = false;
+  });
+  typeSelect.addEventListener('change', update);
+  includeSelect.addEventListener('change', update);
+  urlInput.addEventListener('focus', () => urlInput.select());
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(urlInput.value);
+      copyBtn.textContent = 'コピーしました';
+    } catch {
+      // Clipboard access can be refused, such as in an iframe or over plain HTTP
+      urlInput.focus();
+      urlInput.select();
+      copyBtn.textContent = '選択中のURLをコピーしてください';
+    }
+  });
+  const close = () => {
+    backdrop.hidden = true;
+  };
+  document.getElementById('btn-close-calendar').addEventListener('click', close);
+  closeOnBackdropClick(backdrop, close);
+}
+
 function setupEditorUI() {
   const addBtn1 = document.getElementById('btn-add-conference1');
   const addBtn2 = document.getElementById('btn-add-conference2');
@@ -598,6 +642,7 @@ function setupEditorUI() {
       }
     });
   }
+  setupCalendarModal();
   const embedAuth = document.getElementById('embed-auth');
   if (embedAuth) {
     // The site header (with its login links) is removed inside an iframe, so
@@ -720,6 +765,7 @@ function setupEditorUI() {
     if (e.key !== 'Escape' || e.isComposing) return;
     if (!document.getElementById('modal-backdrop').hidden) requestCloseModal();
     else if (!hiddenBackdrop.hidden) closeHiddenModal();
+    else document.getElementById('calendar-modal-backdrop').hidden = true;
   });
 
   // Delegate click handling inside hidden modal for edit/unhide actions

@@ -748,4 +748,13 @@ table.data thead th[data-sort-key] {
   /* The stacked table layout is flex, which would split mixed text and code apart */
   table.data.api-table td { display: block; padding: 0.1rem 0; }
   table.data.api-table td:first-child { font-weight: 700; }
+  table.data.api-table td::before { display: none; }
+}
+
+/* Calendar subscription modal */
+.calendar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0 0.5rem;
 }

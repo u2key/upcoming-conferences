@@ -313,6 +313,107 @@ describe('API integration', () => {
     assert.deepEqual(Object.keys(rows[0]), ['name']);
   });
 
+  it('calendar feed: valid iCalendar, public records only', async () => {
+    const adminLogin = await request('POST', '/api/auth/login', {
+      body: { username: 'root', password: 'toor' },
+    });
+    const cookie = adminLogin.cookie;
+    const add = async (fields) =>
+      (await request('POST', '/api/conferences', {
+        cookie,
+        body: { type: 'domestic', ...fields },
+      })).json.conference;
+    const url = '/api/conferences/calendar.ics';
+
+    const full = await add({
+      name: 'CalFull, 2099; a\\b',
+      abstractDeadline: '2099-01-31',
+      manuscriptDeadline: '2099-03-01',
+      startDate: '2099-12-30',
+      endDate: '2099-12-31',
+      location: 'Kyoto, Japan',
+      website: 'https://example.com/cal',
+    });
+    const oneDay = await add({ name: 'CalOneDay', startDate: '2099-02-28', website: 'javascript:alert(1)' });
+    const noDates = await add({ name: 'CalNoDates' });
+    const injected = await add({
+      name: 'CalInject\r\nBEGIN:VEVENT\r\nSUMMARY:evil',
+      startDate: '2099-05-01',
+    });
+    const longName = 'カレンダー長い名前'.repeat(10);
+    await add({ name: longName, startDate: '2099-06-01' });
+    const hidden = await add({ name: 'CalHidden', startDate: '2099-07-01', type: 'international' });
+    await request('POST', `/api/conferences/${hidden.id}/hide`, { cookie });
+    const intl = await add({ name: 'CalIntl', startDate: '2099-08-01', type: 'international' });
+
+    const res = await request('GET', url, { cookie }); // logging in must not reveal hidden records
+    assert.equal(res.status, 200);
+    assert.match(res.headers['content-type'], /^text\/calendar; charset=utf-8/);
+    assert.equal(res.headers['access-control-allow-origin'], '*');
+    const raw = String(res.json);
+
+    // Structure: CRLF only, lines within 75 octets, balanced events
+    assert.equal(raw.replace(/\r\n/g, '').includes('\n'), false);
+    assert.ok(raw.startsWith('BEGIN:VCALENDAR\r\nVERSION:2.0\r\n'));
+    assert.ok(raw.endsWith('END:VCALENDAR\r\n'));
+    for (const line of raw.split('\r\n')) assert.ok(Buffer.byteLength(line) <= 75, line);
+    const text = raw.replace(/\r\n[ \t]/g, '');
+    const lines = text.split('\r\n');
+    assert.equal(lines.filter((l) => l === 'BEGIN:VEVENT').length, lines.filter((l) => l === 'END:VEVENT').length);
+
+    const events = text.split('BEGIN:VEVENT\r\n').slice(1).map((e) => {
+      const fields = {};
+      for (const line of e.split('\r\n')) {
+        const i = line.indexOf(':');
+        if (i > 0) fields[line.slice(0, i)] = line.slice(i + 1);
+      }
+      return fields;
+    });
+    const of = (id) => events.filter((e) => e.UID.startsWith(`conference-${id}-`));
+
+    // A blank application deadline defaults to the abstract date, giving one event, not two
+    const fullEvents = of(full.id);
+    assert.equal(fullEvents.length, 3);
+    const abstract = fullEvents.find((e) => e.SUMMARY.includes('申込・抄録'));
+    assert.equal(abstract['DTSTART;VALUE=DATE'], '20990131');
+    assert.equal(abstract['DTEND;VALUE=DATE'], '20990201'); // end is exclusive
+    const period = fullEvents.find((e) => e['DTSTART;VALUE=DATE'] === '20991230');
+    assert.equal(period['DTEND;VALUE=DATE'], '21000101'); // crosses the year
+    assert.equal(period.SUMMARY, 'CalFull\\, 2099\\; a\\\\b');
+    assert.equal(period.LOCATION, 'Kyoto\\, Japan');
+    assert.equal(period.URL, 'https://example.com/cal');
+
+    // Start date alone gives one day. An unsafe URL isn't passed on
+    assert.equal(of(oneDay.id)[0]['DTEND;VALUE=DATE'], '20990301');
+    assert.equal(of(oneDay.id)[0].URL, undefined);
+    assert.doesNotMatch(text, /javascript:/);
+    assert.equal(of(noDates.id).length, 0);
+
+    // A line break in a name stays inside the summary
+    assert.equal(of(injected.id).length, 1);
+    assert.ok(!lines.includes('SUMMARY:evil'));
+    assert.ok(text.includes(longName), 'folding must not break multi-byte text');
+
+    assert.ok(!text.includes('CalHidden'));
+
+    // UIDs stay the same across fetches
+    const again = await request('GET', url);
+    assert.equal(String(again.json), raw);
+
+    // Filters
+    const international = String((await request('GET', `${url}?type=international`)).json);
+    assert.ok(international.includes('CalIntl') && !international.includes('CalOneDay'));
+    assert.ok(international.includes(`conference-${intl.id}-dates`));
+    const deadlines = String((await request('GET', `${url}?include=deadlines`)).json);
+    assert.ok(deadlines.includes(`conference-${full.id}-abstract`) || deadlines.includes(`conference-${full.id}-application`));
+    assert.ok(!deadlines.includes(`conference-${full.id}-dates`));
+    const dates = String((await request('GET', `${url}?include=dates`)).json);
+    assert.ok(dates.includes(`conference-${full.id}-dates`));
+    assert.ok(!dates.includes('【締切】'));
+    assert.equal((await request('GET', `${url}?type=bad`)).status, 400);
+    assert.equal((await request('GET', `${url}?include=bad`)).status, 400);
+  });
+
   // Registers and approves a non-admin user, returning their session cookie.
   async function createEditor(adminCookie, username) {
     const application = await request('POST', '/api/auth/register', {

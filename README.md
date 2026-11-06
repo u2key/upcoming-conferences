@@ -14,6 +14,7 @@
 - 未登録の学会の登録を促す通知メール（毎月第1月曜日に自動送信、管理コンソールからプレビュー付きで手動送信。受信はユーザごとに選択可能でデフォルトはオン）
 - サーバ側で SameSite=None; Secure 指定のクロスサイト cookie を有効化可能（iframe 埋め込み対応）
 - 生データ出力 API: `/api/conferences/export`（JSON/NDJSON, CORS 対応）
+- カレンダー配信: `/api/conferences/calendar.ics`（iCalendar。Google カレンダーなどで購読可能）
 - Socket.io によるリアルタイム更新、SQLite3 による永続化、操作ログ（90日）
 
 ---
@@ -146,6 +147,16 @@ GET /api/conferences/export
 - 全件 JSON: curl -s 'https://confs.example.com/api/conferences/export'
 - tag と fields 指定: curl -s "'https://confs.example.com/api/conferences/export?tag=AICAS&fields=id,name,tag,website'"
 - NDJSON: curl -s 'https://confs.example.com/api/conferences/export?format=ndjson'
+
+### 新規: カレンダー配信
+
+GET /api/conferences/calendar.ics
+- 説明: 締切と開催期間を iCalendar 形式で配信します。Google カレンダーなどの「URL で追加」で購読できます（Google からの取得にはサーバが HTTPS で公開されている必要があります）。非表示の学会は含みません。一覧ページの「カレンダーに追加」から URL を作れます。
+- クエリパラメータ:
+  - type=domestic|international
+  - include=deadlines|dates  （省略時は両方）
+- 同じ日の締切は 1 つの予定にまとめます。予定の UID は固定なので、更新しても重複しません。
+- キャッシュ: Cache-Control: public, max-age=300
 
 ### 既存の主な API（要約）
 - GET `/api/conferences` — 公開リスト（`?type=&includeHidden=1` をサポート; includeHidden は認証ユーザのみ）

@@ -74,6 +74,23 @@ const conferences = await res.json();</pre>
     </section>
 
     <section class="panel">
+      <h2>カレンダーで購読する</h2>
+      <p>締切と開催期間を iCalendar 形式で配信しています。一覧ページの「カレンダーに追加」から登録するか、次のURLをカレンダーアプリに登録してください。</p>
+      <pre class="code-block" data-with-origin>{origin}/api/conferences/calendar.ics</pre>
+      <p><code>GET /api/conferences/calendar.ics</code></p>
+      <div class="table-wrap">
+        <table class="data api-table">
+          <thead><tr><th>パラメータ</th><th>説明</th><th>例</th></tr></thead>
+          <tbody>
+            <tr><td><code>type</code></td><td><code>domestic</code>（国内）または <code>international</code>（国際）</td><td><code>type=domestic</code></td></tr>
+            <tr><td><code>include</code></td><td><code>deadlines</code>（締切のみ）または <code>dates</code>（開催期間のみ）。省略すると両方です。</td><td><code>include=deadlines</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="hint">反映のタイミングはカレンダーアプリによります。直前の締切は公式サイトで確認してください。</p>
+    </section>
+
+    <section class="panel">
       <h2>利用時の注意</h2>
       <ul class="api-notes">
         <li>応答は最大60秒キャッシュされます。短い間隔で繰り返し取得する必要はありません。</li>

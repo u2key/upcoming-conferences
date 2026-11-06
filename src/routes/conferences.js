@@ -2,6 +2,7 @@
 
 const express = require('express');
 const conferences = require('../services/conferences');
+const { buildCalendar } = require('../services/calendar');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -107,6 +108,37 @@ router.get('/export', (req, res) => {
 
     // Default: JSON array
     res.json(fields ? list.map((item) => fields.reduce((acc, f) => ({ ...acc, [f]: item[f] }), {})) : list);
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/conferences/calendar.ics
+ * Public iCalendar feed for calendar apps to subscribe to. Never includes hidden records.
+ * Query params:
+ *  - type=domestic|international
+ *  - include=deadlines|dates (default: both)
+ */
+router.get('/calendar.ics', (req, res) => {
+  try {
+    const type = req.query.type || undefined;
+    if (type && type !== 'domestic' && type !== 'international') {
+      return res.status(400).json({ error: 'type は domestic または international です' });
+    }
+    const include = req.query.include || 'all';
+    if (!['all', 'deadlines', 'dates'].includes(include)) {
+      return res.status(400).json({ error: 'include は deadlines または dates です' });
+    }
+    const label = { domestic: '（国内）', international: '（国際）' }[type] || '';
+    const body = buildCalendar(conferences.list({ type, includeHidden: false }), {
+      include,
+      name: `Upcoming Conferences${label}`,
+    });
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Cache-Control', 'public, max-age=300');
+    res.set('Content-Disposition', 'inline; filename="upcoming-conferences.ics"');
+    res.type('text/calendar; charset=utf-8').send(body);
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
   }
