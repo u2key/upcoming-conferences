@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>公開API | Upcoming Conferences</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <a class="brand" href="/">
+        <span class="logo">UC</span>
+        Upcoming Conferences
+      </a>
+      <nav class="nav" id="nav-auth"></nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h1 class="page-title">公開API</h1>
+    <p class="page-desc">学会の締め切り情報をJSONで取得できます。登録やAPIキーは不要で、他のサイトのJavaScriptからも直接呼び出せます。</p>
+
+    <section class="panel">
+      <h2>すぐに試す</h2>
+      <pre class="code-block" data-with-origin>curl '{origin}/api/conferences/export?upcoming=1'</pre>
+      <p><a href="/api/conferences/export?upcoming=1" target="_blank" rel="noopener">ブラウザで開く</a></p>
+      <pre class="code-block" data-with-origin>const res = await fetch('{origin}/api/conferences/export?upcoming=1&amp;type=international');
+const conferences = await res.json();</pre>
+    </section>
+
+    <section class="panel">
+      <h2>エンドポイント</h2>
+      <p><code>GET /api/conferences/export</code></p>
+      <p class="hint">パラメータはすべて省略できます。省略すると、終了した学会も含めて公開中の全件を返します。</p>
+      <div class="table-wrap">
+        <table class="data api-table">
+          <thead><tr><th>パラメータ</th><th>説明</th><th>例</th></tr></thead>
+          <tbody>
+            <tr><td><code>upcoming</code></td><td><code>1</code> で終了した学会を除きます。終了日が未設定の学会は残ります。</td><td><code>upcoming=1</code></td></tr>
+            <tr><td><code>type</code></td><td><code>domestic</code>（国内）または <code>international</code>（国際）</td><td><code>type=domestic</code></td></tr>
+            <tr><td><code>tag</code></td><td>タグの完全一致。同じ学会の各回に共通のタグが付いています。</td><td><code>tag=icml</code></td></tr>
+            <tr><td><code>since</code></td><td>この日時以降に更新された学会だけを返します。ISO 8601形式で、時刻を書く場合はタイムゾーンも付けてください。</td><td><code>since=2026-11-01T00:00:00Z</code></td></tr>
+            <tr><td><code>fields</code></td><td>返す項目をカンマ区切りで指定します。</td><td><code>fields=name,website,endDate</code></td></tr>
+            <tr><td><code>format</code></td><td><code>json</code>（既定）または <code>ndjson</code>（1行に1件）</td><td><code>format=ndjson</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>レスポンスの項目</h2>
+      <p class="hint">JSONの配列で返します。日付は <code>YYYY-MM-DD</code> 形式で、未設定の締切や日付は <code>null</code> です。</p>
+      <div class="table-wrap">
+        <table class="data api-table">
+          <thead><tr><th>項目</th><th>説明</th></tr></thead>
+          <tbody>
+            <tr><td><code>id</code></td><td>レコードのID</td></tr>
+            <tr><td><code>name</code></td><td>学会名</td></tr>
+            <tr><td><code>type</code></td><td><code>domestic</code> または <code>international</code></td></tr>
+            <tr><td><code>applicationDeadline</code></td><td>申込期限</td></tr>
+            <tr><td><code>abstractDeadline</code></td><td>抄録提出期限</td></tr>
+            <tr><td><code>manuscriptDeadline</code></td><td>原稿提出期限</td></tr>
+            <tr><td><code>startDate</code> / <code>endDate</code></td><td>開始日 / 終了日</td></tr>
+            <tr><td><code>website</code></td><td>学会のURL（未設定なら空文字）。利用者の入力なので、リンクにするときは <code>http</code> / <code>https</code> か確認してください。</td></tr>
+            <tr><td><code>tag</code></td><td>同じ学会の各回に共通のタグ（未設定なら空文字）</td></tr>
+            <tr><td><code>location</code></td><td>開催地</td></tr>
+            <tr><td><code>isHidden</code></td><td>非表示かどうか。公開APIでは常に <code>false</code> です。</td></tr>
+            <tr><td><code>createdBy</code> / <code>updatedBy</code></td><td>登録・更新したユーザの内部ID（数値）</td></tr>
+            <tr><td><code>createdAt</code> / <code>updatedAt</code></td><td>登録・更新日時（UTC、<code>YYYY-MM-DD HH:MM:SS</code>）</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>利用時の注意</h2>
+      <ul class="api-notes">
+        <li>応答は最大60秒キャッシュされます。短い間隔で繰り返し取得する必要はありません。</li>
+        <li><code>since</code> では、削除や非表示になった学会を検出できません。手元のデータと同期するときは、定期的に全件を取得してください。</li>
+        <li>締切は変更や延長されることがあります。投稿の前に、学会の公式サイトで確認してください。</li>
+      </ul>
+    </section>
+
+    <section class="panel">
+      <h2>情報の登録に協力する</h2>
+      <p>掲載されている情報は、利用者の皆さんの登録で成り立っています。アカウントを申請すると、学会の追加と修正ができるようになります。</p>
+      <a class="btn" href="/register.html">アカウントを申請する</a>
+    </section>
+  </main>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/api-docs.js"></script>
+</body>
+</html>

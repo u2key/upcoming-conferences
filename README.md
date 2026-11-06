@@ -130,16 +130,17 @@ systemd のユニットは README の以前の例を参照してください。
 ### 新規: 生データエクスポート
 
 GET /api/conferences/export
-- 説明: 他アプリケーション向けに学会データを生データで取得するためのエンドポイント。CORS を許可しているためブラウザやサーバから直接取得できます。
+- 説明: 他アプリケーション向けに学会データを生データで取得するためのエンドポイント。CORS を許可しているためブラウザやサーバから直接取得できます。利用者向けの説明は `/api.html` にあります。
 - クエリパラメータ:
   - type=domestic|international
   - tag=TAG  （タグで絞り込み、完全一致）
-  - since=ISO8601  （updatedAt >= since でフィルタ）
+  - upcoming=1  （終了した学会を除外。終了日が未設定の学会は残る）
+  - since=ISO8601  （updatedAt >= since でフィルタ。解釈できない値は 400）
   - fields=comma,separated (例: fields=id,name,website) — 返却フィールドの絞り込み
   - format=json|ndjson (ndjson は行区切りの JSON、stream 処理に便利)
   - includeHidden=1 （認証ユーザのみ有効。非表示レコードを含める）
 - ヘッダ: Access-Control-Allow-Origin: * を返します。
-- キャッシュ: Cache-Control: public, max-age=60
+- キャッシュ: Cache-Control: public, max-age=60（includeHidden 指定時は private, no-store）
 
 例:
 - 全件 JSON: curl -s 'https://confs.example.com/api/conferences/export'

@@ -721,3 +721,31 @@ table.data thead th[data-sort-key] {
   table.hidden-list td:first-child { font-weight: 600; }
   table.hidden-list td.actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem; white-space: normal; }
 }
+
+/* Public API page */
+.api-link {
+  margin-left: 0.75rem;
+  font-size: 0.75rem;
+}
+.code-block {
+  margin: 0.5rem 0;
+  padding: 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.api-table code {
+  overflow-wrap: anywhere;
+}
+.api-notes {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+@media (max-width: 540px) {
+  /* The stacked table layout is flex, which would split mixed text and code apart */
+  table.data.api-table td { display: block; padding: 0.1rem 0; }
+  table.data.api-table td:first-child { font-weight: 700; }
+}

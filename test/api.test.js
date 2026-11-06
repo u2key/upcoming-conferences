@@ -85,6 +85,7 @@ function request(method, urlPath, { body, cookie } = {}) {
           const setCookie = res.headers['set-cookie'];
           resolve({
             status: res.statusCode,
+            headers: res.headers,
             json,
             cookie: setCookie ? setCookie.map((c) => c.split(';')[0]).join('; ') : cookie,
           });
@@ -252,6 +253,64 @@ describe('API integration', () => {
     }
     const admin = await request('GET', '/api/admin/applications', { cookie });
     assert.equal(admin.status, 403);
+  });
+
+  it('export API: filters, stable shape, and safe caching', async () => {
+    const adminLogin = await request('POST', '/api/auth/login', {
+      body: { username: 'root', password: 'toor' },
+    });
+    const cookie = adminLogin.cookie;
+    const add = async (fields) =>
+      (await request('POST', '/api/conferences', {
+        cookie,
+        body: { type: 'domestic', tag: 'export-test', ...fields },
+      })).json.conference;
+    const names = (res) => res.json.filter((c) => c.tag === 'export-test').map((c) => c.name).sort();
+    const url = '/api/conferences/export';
+
+    const future = await add({ name: 'ExFuture', endDate: '2099-01-01' });
+    await add({ name: 'ExPast', endDate: '2020-01-01' });
+    await add({ name: 'ExNoEnd' });
+    const hidden = await add({ name: 'ExHidden', endDate: '2099-01-01' });
+    await request('POST', `/api/conferences/${hidden.id}/hide`, { cookie });
+
+    // Output shape is a contract with external consumers
+    const all = await request('GET', url);
+    assert.equal(all.status, 200);
+    assert.deepEqual(Object.keys(all.json.find((c) => c.id === future.id)), [
+      'id', 'name', 'type', 'applicationDeadline', 'abstractDeadline', 'manuscriptDeadline',
+      'startDate', 'endDate', 'website', 'tag', 'location', 'isHidden',
+      'createdBy', 'updatedBy', 'createdAt', 'updatedAt',
+    ]);
+    assert.deepEqual(names(all), ['ExFuture', 'ExNoEnd', 'ExPast']);
+    assert.equal(all.headers['access-control-allow-origin'], '*');
+    assert.equal(all.headers['cache-control'], 'public, max-age=60');
+
+    assert.deepEqual(names(await request('GET', `${url}?upcoming=1`)), ['ExFuture', 'ExNoEnd']);
+
+    // since accepts every ISO 8601 form, including same-day updates
+    const dayStart = `${new Date().toISOString().slice(0, 10)}T00:00:00Z`;
+    assert.equal(names(await request('GET', `${url}?since=${dayStart}`)).length, 3);
+    assert.equal(names(await request('GET', `${url}?since=${dayStart.slice(0, 10)}`)).length, 3);
+    assert.equal(names(await request('GET', `${url}?since=2099-01-01T00:00:00Z`)).length, 0);
+    // The same instant written with an offset
+    const offset = `${dayStart.slice(0, 10)}T09:00:00%2B09:00`;
+    assert.equal(names(await request('GET', `${url}?since=${offset}`)).length, 3);
+    assert.equal((await request('GET', `${url}?since=garbage`)).status, 400);
+
+    // Hidden records: never for the public, never in a shared cache
+    const anon = await request('GET', `${url}?includeHidden=1`);
+    assert.ok(!anon.json.some((c) => c.id === hidden.id));
+    assert.equal(anon.headers['cache-control'], 'private, no-store');
+    const authed = await request('GET', `${url}?includeHidden=1`, { cookie });
+    assert.ok(authed.json.some((c) => c.id === hidden.id));
+    assert.equal(authed.headers['cache-control'], 'private, no-store');
+
+    const ndjson = await request('GET', `${url}?format=ndjson&tag=export-test&fields=name&upcoming=1`);
+    assert.match(ndjson.headers['content-type'], /application\/x-ndjson/);
+    const rows = String(ndjson.json).trim().split('\n').map((l) => JSON.parse(l));
+    assert.deepEqual(rows.map((r) => r.name).sort(), ['ExFuture', 'ExNoEnd']);
+    assert.deepEqual(Object.keys(rows[0]), ['name']);
   });
 
   // Registers and approves a non-admin user, returning their session cookie.

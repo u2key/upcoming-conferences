@@ -31,6 +31,7 @@ function emitUpdate(reason, conference) {
  *  - type=domestic|international
  *  - tag=TAG (exact match)
  *  - since=ISO8601 (filters updatedAt >= since)
+ *  - upcoming=1 (excludes ended conferences; dates compared in UTC)
  *  - fields=comma,separated,list (select subset of returned keys)
  *  - format=json|ndjson (default json)
  *  - includeHidden=1 (only honored for authenticated users)
@@ -53,9 +54,20 @@ router.get('/export', (req, res) => {
       list = list.filter((c) => (c.tag || '') === tag);
     }
 
+    // Upcoming filter: a conference with no end date can't be known to have ended
+    if (req.query.upcoming === '1') {
+      const today = new Date().toISOString().slice(0, 10);
+      list = list.filter((c) => !c.endDate || c.endDate.slice(0, 10) >= today);
+    }
+
     // Since filter (updatedAt >= since)
     if (req.query.since) {
-      const since = String(req.query.since);
+      const parsed = new Date(String(req.query.since));
+      if (Number.isNaN(parsed.getTime())) {
+        return res.status(400).json({ error: 'since は ISO 8601 形式で指定してください' });
+      }
+      // Stored timestamps are UTC "YYYY-MM-DD HH:MM:SS", so compare in that form
+      const since = parsed.toISOString().slice(0, 19).replace('T', ' ');
       list = list.filter((c) => {
         const updated = c.updatedAt || c.createdAt || '';
         return updated >= since;
@@ -80,7 +92,8 @@ router.get('/export', (req, res) => {
     const format = (req.query.format || 'json').toLowerCase();
     // CORS for integrations
     res.set('Access-Control-Allow-Origin', '*');
-    res.set('Cache-Control', 'public, max-age=60');
+    // A response that may hold hidden records must never reach a shared cache
+    res.set('Cache-Control', req.query.includeHidden ? 'private, no-store' : 'public, max-age=60');
 
     if (format === 'ndjson') {
       res.type('application/x-ndjson');
