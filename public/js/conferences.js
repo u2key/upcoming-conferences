@@ -587,8 +587,10 @@ function setupCalendarModal() {
     if (includeSelect.value) params.set('include', includeSelect.value);
     const query = params.toString();
     urlInput.value = `${location.origin}/api/conferences/calendar.ics${query ? `?${query}` : ''}`;
+    // Google's cid parameter is reported to reject https:// feed URLs but accept webcal://
+    const webcalUrl = urlInput.value.replace(/^https?:/, 'webcal:');
     document.getElementById('calendar-google').href =
-      `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(urlInput.value)}`;
+      `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcalUrl)}`;
     copyBtn.textContent = 'URLをコピー';
   }
 
