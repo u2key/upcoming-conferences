@@ -20,7 +20,7 @@
 
   <main class="container">
     <h1 class="page-title">公開API</h1>
-    <p class="page-desc">学会の締め切り情報をJSONで取得できます。登録やAPIキーは不要で、他のサイトのJavaScriptからも直接呼び出せます。</p>
+    <p class="page-desc">学会情報の読み取りは誰でもできます。登録やAPIキーは不要で、他のサイトのJavaScriptからも直接呼び出せます。データの変更にはログインが必要です。</p>
 
     <section class="panel">
       <h2>すぐに試す</h2>
@@ -47,6 +47,31 @@ const conferences = await res.json();</pre>
           </tbody>
         </table>
       </div>
+    </section>
+
+    <section class="panel">
+      <h2>その他の読み取りAPI</h2>
+      <p class="hint">いずれもログイン不要です。非表示の学会は含みません。</p>
+      <div class="table-wrap">
+        <table class="data api-table">
+          <thead><tr><th>エンドポイント</th><th>内容</th></tr></thead>
+          <tbody>
+            <tr><td><code>GET /api/conferences</code></td><td>学会の一覧。<code>{ "conferences": [...] }</code> の形で返します。<code>type</code> で絞り込めます。</td></tr>
+            <tr><td><code>GET /api/conferences/:id</code></td><td>1件の学会。<code>{ "conference": {...} }</code> の形で返します。</td></tr>
+            <tr><td><code>GET /api/conferences/tags</code></td><td>使用中のタグと、その分野・件数。</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>データの変更</h2>
+      <p>追加（<code>POST /api/conferences</code>）と修正（<code>PUT /api/conferences/:id</code>）には、承認済みアカウントでのログインが必要です。非表示・再表示・削除は管理者のみです。ログインにはセッションCookieを使います。</p>
+      <pre class="code-block" data-with-origin>curl -c cookie.txt -H 'Content-Type: application/json' \
+  -d '{"username":"ユーザ名","password":"パスワード"}' {origin}/api/auth/login</pre>
+      <pre class="code-block" data-with-origin>curl -b cookie.txt -H 'Content-Type: application/json' \
+  -d '{"name":"学会名","type":"domestic"}' {origin}/api/conferences</pre>
+      <p class="hint">他のサイトのJavaScriptからの変更は、ブラウザによって拒否されます。</p>
     </section>
 
     <section class="panel">

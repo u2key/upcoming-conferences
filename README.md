@@ -162,9 +162,12 @@ GET /api/conferences/calendar.ics
 - キャッシュ: Cache-Control: public, max-age=300
 
 ### 既存の主な API（要約）
+
+学会情報の読み取り（GET）はログイン不要で、CORS により他のサイトからも呼び出せます（非表示の学会は含まない）。データの変更にはログインが必要です。ユーザ情報・操作ログ・申請は管理者のみ読み取れます。
+
 - GET `/api/conferences` — 公開リスト（`?type=&includeHidden=1` をサポート; includeHidden は認証ユーザのみ）
 - GET `/api/conferences/:id` — 単一取得（非表示は未認証時 404）
-- GET `/api/conferences/tags` — 使用中のタグと分野・件数（認証）
+- GET `/api/conferences/tags` — 使用中のタグと分野・件数（非表示のレコードはログイン時のみ含む）
 - POST `/api/conferences` — 追加（認証）。`areas` を省略すると同じタグの分野を引き継ぐ
 - PUT `/api/conferences/:id` — 更新（認証）。`areas` を指定すると同じタグの全レコードに反映（各レコードを操作ログに記録）
 - POST `/api/conferences/:id/hide` — 非表示（管理者のみ）

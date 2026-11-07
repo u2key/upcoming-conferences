@@ -17,6 +17,23 @@ router.setBroadcast = (fn) => {
   broadcast = fn;
 };
 
+/**
+ * Reading conference data is open to everyone, including scripts on other sites.
+ * Other methods never get CORS headers, so browsers keep blocking cross-site writes.
+ */
+router.use((req, res, next) => {
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    res.set('Access-Control-Allow-Origin', '*');
+  } else if (req.method === 'OPTIONS' && ['GET', 'HEAD'].includes(req.get('Access-Control-Request-Method'))) {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, HEAD');
+    res.set('Access-Control-Allow-Headers', req.get('Access-Control-Request-Headers') || '');
+    res.set('Vary', 'Access-Control-Request-Headers');
+    return res.status(204).end();
+  }
+  next();
+});
+
 function emitUpdate(reason, conference) {
   try {
     broadcast({ reason, conference, conferences: conferences.list({ includeHidden: false }) });
@@ -91,8 +108,6 @@ router.get('/export', (req, res) => {
 
     // Format
     const format = (req.query.format || 'json').toLowerCase();
-    // CORS for integrations
-    res.set('Access-Control-Allow-Origin', '*');
     // A response that may hold hidden records must never reach a shared cache
     res.set('Cache-Control', req.query.includeHidden ? 'private, no-store' : 'public, max-age=60');
 
@@ -135,7 +150,6 @@ router.get('/calendar.ics', (req, res) => {
       include,
       name: `Upcoming Conferences${label}`,
     });
-    res.set('Access-Control-Allow-Origin', '*');
     res.set('Cache-Control', 'public, max-age=300');
     res.set('Content-Disposition', 'inline; filename="upcoming-conferences.ics"');
     res.type('text/calendar; charset=utf-8').send(body);
@@ -154,16 +168,18 @@ router.get('/', (req, res) => {
     // Authenticated users (editors/admins) may request hidden conferences; public cannot
     const includeHidden = req.user && req.query.includeHidden === '1' ? true : false;
     const list = conferences.list({ type, includeHidden });
+    if (req.query.includeHidden) res.set('Cache-Control', 'private, no-store');
     res.json({ conferences: list });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
   }
 });
 
-/** GET /api/conferences/tags — tags in use with their areas, for the edit form (includes hidden records) */
-router.get('/tags', requireAuth, (_req, res) => {
+/** GET /api/conferences/tags — tags in use with their areas. Hidden records count only for logged-in users. */
+router.get('/tags', (req, res) => {
   try {
-    res.json({ tags: conferences.listTags() });
+    res.set('Cache-Control', 'private, no-store'); // the same URL answers differently once logged in
+    res.json({ tags: conferences.listTags({ includeHidden: !!req.user }) });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
   }
@@ -177,6 +193,7 @@ router.get('/:id', (req, res) => {
     if (conf.isHidden && !req.user) {
       return res.status(404).json({ error: '学会が見つかりません' });
     }
+    if (conf.isHidden) res.set('Cache-Control', 'private, no-store');
     res.json({ conference: conf });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });

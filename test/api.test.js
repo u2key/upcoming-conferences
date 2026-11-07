@@ -255,6 +255,86 @@ describe('API integration', () => {
     assert.equal(admin.status, 403);
   });
 
+  it('anyone can read conference data, but only logged-in users can change anything', async () => {
+    const adminLogin = await request('POST', '/api/auth/login', {
+      body: { username: 'root', password: 'toor' },
+    });
+    const cookie = adminLogin.cookie;
+    const add = async (body) =>
+      (await request('POST', '/api/conferences', { cookie, body: { type: 'domestic', ...body } })).json.conference;
+    const shown = await add({ name: 'ReadShown', tag: 'read-mixed', areas: 'ReadArea' });
+    const hiddenSibling = await add({ name: 'ReadSibling', tag: 'read-mixed' });
+    const secret = await add({ name: 'ReadSecret', tag: 'read-secret-tag', areas: 'SecretArea' });
+    await request('POST', `/api/conferences/${hiddenSibling.id}/hide`, { cookie });
+    await request('POST', `/api/conferences/${secret.id}/hide`, { cookie });
+
+    // Reads: no login, open to other sites
+    for (const path of [
+      '/api/conferences',
+      `/api/conferences/${shown.id}`,
+      '/api/conferences/tags',
+      '/api/conferences/export',
+      '/api/conferences/calendar.ics',
+    ]) {
+      const res = await request('GET', path);
+      assert.equal(res.status, 200, path);
+      assert.equal(res.headers['access-control-allow-origin'], '*', path);
+      assert.equal(res.headers['access-control-allow-credentials'], undefined, path);
+      assert.ok(!JSON.stringify(res.json).includes('ReadSecret'), `${path} leaked a hidden record`);
+      assert.ok(!JSON.stringify(res.json).includes('read-secret-tag'), `${path} leaked a hidden tag`);
+    }
+
+    // Hidden records stay hidden, even when asked for
+    assert.equal((await request('GET', `/api/conferences/${secret.id}`)).status, 404);
+    const asked = await request('GET', '/api/conferences?includeHidden=1');
+    assert.ok(!asked.json.conferences.some((c) => c.id === secret.id));
+    const publicTags = (await request('GET', '/api/conferences/tags')).json.tags;
+    assert.equal(publicTags.find((t) => t.tag === 'read-mixed').count, 1);
+
+    // Logged in sees them, in responses that must not reach a shared cache
+    const authedTags = await request('GET', '/api/conferences/tags', { cookie });
+    assert.equal(authedTags.json.tags.find((t) => t.tag === 'read-mixed').count, 2);
+    assert.ok(authedTags.json.tags.some((t) => t.tag === 'read-secret-tag'));
+    assert.equal(authedTags.headers['cache-control'], 'private, no-store');
+    const authedOne = await request('GET', `/api/conferences/${secret.id}`, { cookie });
+    assert.equal(authedOne.status, 200);
+    assert.equal(authedOne.headers['cache-control'], 'private, no-store');
+    const authedList = await request('GET', '/api/conferences?includeHidden=1', { cookie });
+    assert.ok(authedList.json.conferences.some((c) => c.id === secret.id));
+    assert.equal(authedList.headers['cache-control'], 'private, no-store');
+
+    // Every way to change data refuses without a login and changes nothing
+    const before = JSON.stringify((await request('GET', '/api/conferences?includeHidden=1', { cookie })).json);
+    const body = { name: 'x', type: 'domestic' };
+    for (const [method, path] of [
+      ['POST', '/api/conferences'],
+      ['PUT', `/api/conferences/${shown.id}`],
+      ['POST', `/api/conferences/${shown.id}/hide`],
+      ['POST', `/api/conferences/${secret.id}/unhide`],
+      ['DELETE', `/api/conferences/${shown.id}`],
+      ['DELETE', '/api/conferences/by-tag/read-mixed'],
+      ['PUT', '/api/auth/notification-preference'],
+      ['POST', '/api/auth/change-password'],
+      ['POST', '/api/admin/applications/1/approve'],
+      ['POST', '/api/admin/applications/1/reject'],
+      ['POST', '/api/admin/applications/1/visibility'],
+      ['POST', '/api/admin/logs/1/rollback'],
+      ['POST', '/api/admin/notifications/send'],
+      ['POST', '/api/admin/users/1/reset-password'],
+      ['POST', '/api/admin/users/1/admin'],
+    ]) {
+      const res = await request(method, path, { body });
+      assert.equal(res.status, 401, `${method} ${path}`);
+      assert.equal(res.headers['access-control-allow-origin'], undefined, `${method} ${path}`);
+    }
+    assert.equal(JSON.stringify((await request('GET', '/api/conferences?includeHidden=1', { cookie })).json), before);
+
+    // Personal data stays private
+    for (const path of ['/api/admin/users', '/api/admin/logs', '/api/admin/applications', '/api/admin/notifications']) {
+      assert.equal((await request('GET', path)).status, 401, path);
+    }
+  });
+
   it('export API: filters, stable shape, and safe caching', async () => {
     const adminLogin = await request('POST', '/api/auth/login', {
       body: { username: 'root', password: 'toor' },
@@ -432,7 +512,6 @@ describe('API integration', () => {
     const tags = await request('GET', '/api/conferences/tags', { cookie });
     assert.deepEqual(tags.json.tags.find((t) => t.tag === 'series'), { tag: 'series', areas: ['WITH-HIDDEN'], count: 3 });
     assert.ok(!tags.json.tags.some((t) => t.tag === ''));
-    assert.equal((await request('GET', '/api/conferences/tags')).status, 401);
   });
 
   it('calendar feed: valid iCalendar, public records only', async () => {

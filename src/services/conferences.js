@@ -188,10 +188,11 @@ function syncTagAreas(tag, areas, id, userId) {
   }
 }
 
-/** Every tag in use with its areas and record count, for filling in the edit form. */
-function listTags() {
+/** Tags in use with their areas and record count. Without includeHidden, hidden records don't count or reveal a tag. */
+function listTags({ includeHidden = false } = {}) {
+  const hidden = includeHidden ? '' : 'AND is_hidden = 0';
   return getDb()
-    .prepare(`SELECT tag, MIN(areas) AS areas, COUNT(*) AS count FROM conferences WHERE tag <> '' GROUP BY tag ORDER BY tag`)
+    .prepare(`SELECT tag, MIN(areas) AS areas, COUNT(*) AS count FROM conferences WHERE tag <> '' ${hidden} GROUP BY tag ORDER BY tag`)
     .all()
     .map((r) => ({ tag: r.tag, areas: r.areas ? r.areas.split(',') : [], count: r.count }));
 }
