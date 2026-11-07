@@ -87,6 +87,22 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+const THEME_BUTTON = '<button type="button" class="btn btn-ghost btn-sm" id="btn-theme"></button>';
+
+/** Labelled with what a click switches to. */
+function setupThemeButton() {
+  const button = document.getElementById('btn-theme');
+  if (!button) return;
+  const label = () => {
+    button.textContent = window.UCTheme.current() === 'dark' ? 'ライト表示' : 'ダーク表示';
+  };
+  label();
+  button.addEventListener('click', () => {
+    window.UCTheme.toggle();
+    label();
+  });
+}
+
 /**
  * Render nav auth state into #nav-auth element.
  */
@@ -106,7 +122,9 @@ async function renderNavAuth() {
     el.innerHTML = `
       <a class="btn btn-secondary btn-sm" href="/login.html">ログイン</a>
       <a class="btn btn-sm" href="/register.html">アカウント申請</a>
+      ${THEME_BUTTON}
     `;
+    setupThemeButton();
     return null;
   }
 
@@ -122,7 +140,9 @@ async function renderNavAuth() {
     ${adminLink}
     <a class="btn btn-sm" href="/password.html">パスワード変更</a>
     <button type="button" class="btn btn-ghost btn-sm" id="btn-logout">ログアウト</button>
+    ${THEME_BUTTON}
   `;
+  setupThemeButton();
 
   const logoutBtn = document.getElementById('btn-logout');
   if (logoutBtn) {
