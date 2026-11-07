@@ -115,6 +115,7 @@ a:hover {
   padding: 0.45rem 0.9rem;
   font-size: 0.875rem;
   font-weight: 600;
+  font-family: inherit; /* buttons don't inherit it, so they looked unlike link buttons */
   cursor: pointer;
   background: var(--primary);
   color: #fff;
@@ -426,7 +427,7 @@ table.data .actions {
   background: var(--surface);
   border-radius: 12px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
-  width: min(560px, 100%);
+  width: min(960px, 100%);
   max-height: 90vh;
   max-height: 90dvh; /* excludes mobile browser bars where supported */
   /* Only the content scrolls, so the title and close/save buttons stay in view */
@@ -574,7 +575,7 @@ footer.site-footer {
   .brand { font-size: 1rem; }
   .brand .logo { width: 24px; height: 24px; }
   .panel { padding: 1rem; }
-  .modal { width: min(92%, 560px); padding: 1rem; }
+  .modal { width: 92%; padding: 1rem; }
   table.data th, table.data td { padding: 0.6rem 0.5rem; }
   .btn { padding: 0.5rem 0.75rem; font-size: 0.9rem; }
   .btn-sm { padding: 0.35rem 0.6rem; }
@@ -708,6 +709,24 @@ table.data thead th[data-sort-key] {
   }
 }
 
+/* Tag and hidden lists in a modal */
+table.hidden-list { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+table.hidden-list th,
+table.hidden-list td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+table.hidden-list th { color: var(--muted); font-weight: 600; font-size: 0.75rem; white-space: nowrap; }
+table.hidden-list tr:hover td { background: #f4f6f9; }
+table.hidden-list td.actions .btn { margin: 0.1rem 0; }
+@media (min-width: 901px) {
+  /* The wide modal has room to keep dates and buttons on one line */
+  table.hidden-list td.dates,
+  table.hidden-list td.actions { white-space: nowrap; }
+  table.hidden-list td.loc { min-width: 5em; }
+  .modal > form > .form-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (min-width: 641px) {
+  .modal-body > .form-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
 /* Tag and hidden lists in a modal: one card per row on phones, so the action
    buttons wrap instead of running off the side */
 @media (max-width: 640px) {
@@ -723,10 +742,6 @@ table.data thead th[data-sort-key] {
 }
 
 /* Public API page */
-.api-link {
-  margin-left: 0.75rem;
-  font-size: 0.75rem;
-}
 .code-block {
   margin: 0.5rem 0;
   padding: 0.75rem;

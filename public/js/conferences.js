@@ -179,7 +179,7 @@ function renderMissingTagsModal() {
     const deleteTag = isAdmin
       ? ` <button class="btn btn-danger btn-sm" data-action="delete-tag" data-tag="${escapeHtml(m.tag)}">タグごと削除（${m.items.length}件）</button>`
       : '';
-    return `<tr data-tag="${escapeHtml(m.tag)}"><td>${name}</td><td>${escapeHtml(m.tag)}</td><td>${dates}</td><td class="actions"><button class="btn btn-sm" data-action="view-tag" data-tag="${escapeHtml(m.tag)}">過去の記録を見る</button>${deleteTag}</td></tr>`;
+    return `<tr data-tag="${escapeHtml(m.tag)}"><td>${name}</td><td>${escapeHtml(m.tag)}</td><td class="dates">${dates}</td><td class="actions"><button class="btn btn-sm" data-action="view-tag" data-tag="${escapeHtml(m.tag)}">過去の記録を見る</button>${deleteTag}</td></tr>`;
   }).join('\n');
   body.innerHTML = `
     <div class="hidden-table-wrap">
@@ -645,6 +645,12 @@ function setupEditorUI() {
     });
   }
   setupCalendarModal();
+  document.getElementById('btn-api').addEventListener('click', (e) => {
+    // In a frame, leave it rather than replacing the embedded list
+    if (window.self === window.top) return;
+    e.preventDefault();
+    openInNewContext(e.currentTarget.href);
+  });
   const embedAuth = document.getElementById('embed-auth');
   if (embedAuth) {
     // The site header (with its login links) is removed inside an iframe, so
@@ -829,7 +835,7 @@ function setupEditorUI() {
             body.innerHTML = '<p class="hint">該当する過去の記録はありません。</p>';
             return;
           }
-          const rows = items.map((c) => `<tr><td>${c.website?`<a href="${escapeHtml(c.website)}" target="_blank">${escapeHtml(c.name)}</a>`:escapeHtml(c.name)}</td><td>${escapeHtml(c.tag||'')}</td><td>${escapeHtml([c.startDate,c.endDate].filter(Boolean).join(' ~ ')||'日付未設定')}</td><td class="actions"><button class="btn btn-sm" data-action="edit" data-id="${c.id}">編集</button> <button class="btn btn-sm" data-action="duplicate" data-id="${c.id}">複製して新規作成</button></td></tr>`).join('');
+          const rows = items.map((c) => `<tr><td>${c.website?`<a href="${escapeHtml(c.website)}" target="_blank">${escapeHtml(c.name)}</a>`:escapeHtml(c.name)}</td><td>${escapeHtml(c.tag||'')}</td><td class="dates">${escapeHtml([c.startDate,c.endDate].filter(Boolean).join(' ~ ')||'日付未設定')}</td><td class="actions"><button class="btn btn-sm" data-action="edit" data-id="${c.id}">編集</button> <button class="btn btn-sm" data-action="duplicate" data-id="${c.id}">複製して新規作成</button></td></tr>`).join('');
           body.innerHTML = `\n            <div class="hidden-table-wrap">\n              <table class="hidden-list">\n                <thead><tr><th>学会名</th><th>タグ</th><th>日付</th><th>操作</th></tr></thead>\n                <tbody>${rows}</tbody>\n              </table>\n            </div>\n          `;
         }).catch((err) => { body.innerHTML = `<p class="flash flash-error">読み込みに失敗しました: ${escapeHtml(err.message)}</p>`; });
       }
