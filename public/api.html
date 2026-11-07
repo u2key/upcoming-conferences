@@ -65,6 +65,7 @@ const conferences = await res.json();</pre>
             <tr><td><code>startDate</code> / <code>endDate</code></td><td>開始日 / 終了日</td></tr>
             <tr><td><code>website</code></td><td>学会のURL（未設定なら空文字）。利用者の入力なので、リンクにするときは <code>http</code> / <code>https</code> か確認してください。</td></tr>
             <tr><td><code>tag</code></td><td>同じ学会の各回に共通のタグ（未設定なら空文字）</td></tr>
+            <tr><td><code>areas</code></td><td>分野の配列（未設定なら空配列）</td></tr>
             <tr><td><code>location</code></td><td>開催地</td></tr>
             <tr><td><code>isHidden</code></td><td>非表示かどうか。公開APIでは常に <code>false</code> です。</td></tr>
             <tr><td><code>createdBy</code> / <code>updatedBy</code></td><td>登録・更新したユーザの内部ID（数値）</td></tr>
@@ -89,6 +90,21 @@ const conferences = await res.json();</pre>
         </table>
       </div>
       <p class="hint">反映のタイミングはカレンダーアプリによります。直前の締切は公式サイトで確認してください。</p>
+    </section>
+
+    <section class="panel">
+      <h2>サイトに埋め込む</h2>
+      <p>一覧ページは iframe で埋め込めます。URLのパラメータで、最初の表示状態を指定できます。</p>
+      <pre class="code-block" data-with-origin>&lt;iframe src="{origin}/?areas=機械学習,ネットワーク&amp;theme=dark"&gt;&lt;/iframe&gt;</pre>
+      <div class="table-wrap">
+        <table class="data api-table">
+          <thead><tr><th>パラメータ</th><th>説明</th><th>例</th></tr></thead>
+          <tbody>
+            <tr><td><code>areas</code></td><td>最初にチェックを入れる分野（カンマ区切り）。指定した分野の学会だけを表示します。分野が未設定の学会も表示するには <code>未設定</code> を含めてください。閲覧者はチェックボックスで変更できます。</td><td><code>areas=機械学習,未設定</code></td></tr>
+            <tr><td><code>theme</code></td><td><code>light</code>（既定）、<code>dark</code>、または <code>auto</code>（閲覧者のOS設定に従う）</td><td><code>theme=dark</code></td></tr>
+          </tbody>
+        </table>
+      </div>
     </section>
 
     <section class="panel">

@@ -10,6 +10,115 @@ let sortDir = 1; // 1 = asc, -1 = desc
 let missingTags = []; // tags whose records are all hidden or ended
 let formSnapshot = ''; // form contents when the edit modal was opened
 
+/* ---------- Area filter ---------- */
+
+const UNSET_AREA = '未設定';
+// An area is shown unless decided otherwise. With ?areas= in the URL only the
+// listed ones are, including any added later than the URL was written.
+let areaDefaultChecked = true;
+const areaDecisions = new Map();
+let renderedAreaKey = null;
+
+const splitAreas = (value) =>
+  String(value || '')
+    .split(/[,、，]/)
+    .map((area) => area.trim())
+    .filter(Boolean);
+
+function readAreaParam() {
+  const requested = splitAreas(new URLSearchParams(location.search).get('areas'));
+  if (!requested.length) return;
+  areaDefaultChecked = false;
+  requested.forEach((area) => areaDecisions.set(area, true));
+}
+
+const isAreaChecked = (area) =>
+  areaDecisions.has(area) ? areaDecisions.get(area) : areaDefaultChecked;
+
+function matchesAreaFilter(conf) {
+  return conf.areas && conf.areas.length ? conf.areas.some(isAreaChecked) : isAreaChecked(UNSET_AREA);
+}
+
+/** Areas of the listed conferences, plus any the URL asked for so a typo there stays visible. */
+function knownAreas() {
+  const areas = new Set(allConferences.flatMap((c) => c.areas || []));
+  areaDecisions.forEach((checked, area) => {
+    if (checked && area !== UNSET_AREA) areas.add(area);
+  });
+  return [...areas].sort((a, b) => a.localeCompare(b, 'ja'));
+}
+
+function renderAreaFilter() {
+  const filter = document.getElementById('area-filter');
+  const options = document.getElementById('area-options');
+  const areas = knownAreas();
+  // With no areas at all there is nothing to choose between
+  const choices = areas.length ? [...areas, UNSET_AREA] : [];
+  filter.hidden = !choices.length && areaDefaultChecked;
+  const key = JSON.stringify(choices);
+  if (key !== renderedAreaKey) {
+    // Only rebuild when the list changes, so live updates don't take focus away
+    renderedAreaKey = key;
+    options.innerHTML = choices
+      .map(
+        (area) => `<label class="area-option"><input type="checkbox" data-area="${escapeHtml(area)}" /> ${escapeHtml(area)}</label>`
+      )
+      .join('');
+  }
+  options.querySelectorAll('input').forEach((input) => {
+    input.checked = isAreaChecked(input.dataset.area);
+  });
+}
+
+/** Keep the URL matching the selection, so it survives a reload and can be used as an embed URL. */
+function syncAreaParam() {
+  const params = new URLSearchParams(location.search);
+  params.delete('areas');
+  const choices = [...document.querySelectorAll('#area-options input')].map((i) => i.dataset.area);
+  const checked = choices.filter(isAreaChecked);
+  const parts = [...params.entries()].map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+  if (checked.length && checked.length < choices.length) {
+    parts.push(`areas=${checked.map(encodeURIComponent).join(',')}`);
+  }
+  try {
+    history.replaceState(null, '', parts.length ? `?${parts.join('&')}` : location.pathname);
+  } catch {
+    // can be refused in a sandboxed iframe; the selection still applies
+  }
+}
+
+function setupAreaFilter() {
+  readAreaParam();
+  document.getElementById('area-options').addEventListener('change', (e) => {
+    areaDecisions.set(e.target.dataset.area, e.target.checked);
+    syncAreaParam();
+    renderTables();
+  });
+  const setAll = (checked) => {
+    areaDefaultChecked = checked;
+    areaDecisions.clear();
+    renderedAreaKey = null;
+    renderAreaFilter();
+    syncAreaParam();
+    renderTables();
+  };
+  document.getElementById('btn-areas-all').addEventListener('click', () => setAll(true));
+  document.getElementById('btn-areas-none').addEventListener('click', () => setAll(false));
+}
+
+/** Buttons for existing areas under the form's input, so the same name gets reused. */
+function renderAreaSuggestions() {
+  const input = document.getElementById('f-areas');
+  const box = document.getElementById('area-suggestions');
+  const current = splitAreas(input.value);
+  const rest = [...new Set(allConferences.flatMap((c) => c.areas || []))]
+    .filter((area) => !current.includes(area))
+    .sort((a, b) => a.localeCompare(b, 'ja'));
+  box.innerHTML = rest
+    .map((area) => `<button type="button" class="area-chip" data-area="${escapeHtml(area)}">+ ${escapeHtml(area)}</button>`)
+    .join('');
+}
+
 function deadlineCell(value, label, optional = false) {
   const cls = deadlineClass(value);
   return `<td class="deadline ${cls}${optional ? ' optional' : ''}" data-label="${escapeHtml(label)}">${escapeHtml(formatDate(value))}</td>`;
@@ -24,9 +133,11 @@ function renderTable(type, rows, tbodyId) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
 
-  const filtered = rows.filter((c) => c.type === type);
+  const ofType = rows.filter((c) => c.type === type);
+  const filtered = ofType.filter(matchesAreaFilter);
   if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty">登録されている学会はありません</td></tr>`;
+    const message = ofType.length ? '選択した分野の学会はありません' : '登録されている学会はありません';
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">${message}</td></tr>`;
     return;
   }
 
@@ -53,7 +164,7 @@ function renderTable(type, rows, tbodyId) {
 
       return `
         <tr class="${hiddenClass}" data-id="${c.id}">
-          <td data-label="学会名">${c.website ? `<a href="${escapeHtml(c.website)}" target="_blank" rel="noopener noreferrer"><strong>${escapeHtml(c.name)}</strong></a>` : `<strong>${escapeHtml(c.name)}</strong>`}${hiddenBadge}</td>
+          <td data-label="学会名"><div class="name-cell"><div>${c.website ? `<a href="${escapeHtml(c.website)}" target="_blank" rel="noopener noreferrer"><strong>${escapeHtml(c.name)}</strong></a>` : `<strong>${escapeHtml(c.name)}</strong>`}${hiddenBadge}</div>${(c.areas || []).length ? `<div class="area-tags">${c.areas.map((a) => `<span class="area-tag">${escapeHtml(a)}</span>`).join('')}</div>` : ''}</div></td>
           ${deadlineCell(c.applicationDeadline, '申し込み期限', false)}
           ${deadlineCell(c.abstractDeadline, '抄録提出期限', true)}
           ${deadlineCell(c.manuscriptDeadline, '原稿提出期限', true)}
@@ -244,6 +355,7 @@ function renderAll(list) {
 
   // Filter out conferences that have already ended for main listing
   allConferences = (list || []).filter((c) => !isEnded(c));
+  renderAreaFilter();
   renderTables();
 }
 
@@ -418,7 +530,9 @@ function openModal(conference) {
     form.elements.location.value = conference.location || '';
     if (form.elements.website) form.elements.website.value = conference.website || '';
     if (form.elements.tag) form.elements.tag.value = conference.tag || '';
+    form.elements.areas.value = (conference.areas || []).join(', ');
   }
+  renderAreaSuggestions();
 
   formSnapshot = JSON.stringify(formToBody(form));
   backdrop.hidden = false;
@@ -448,6 +562,7 @@ function formToBody(form) {
     endDate: form.elements.endDate.value || null,
     website: form.elements.website ? form.elements.website.value.trim() : '',
     tag: form.elements.tag ? form.elements.tag.value.trim() : '',
+    areas: form.elements.areas.value.trim(),
     location: form.elements.location.value.trim(),
   };
 }
@@ -645,6 +760,7 @@ function setupEditorUI() {
     });
   }
   setupCalendarModal();
+  setupAreaFilter();
   document.getElementById('btn-api').addEventListener('click', (e) => {
     // In a frame, leave it rather than replacing the embedded list
     if (window.self === window.top) return;
@@ -757,6 +873,15 @@ function setupEditorUI() {
   if (currentUser) {
     document.getElementById('conf-form').addEventListener('submit', onSubmitForm);
     document.getElementById('btn-cancel-modal').addEventListener('click', requestCloseModal);
+    document.getElementById('f-areas').addEventListener('input', renderAreaSuggestions);
+    document.getElementById('area-suggestions').addEventListener('click', (e) => {
+      const chip = e.target.closest('.area-chip');
+      if (!chip) return;
+      const input = document.getElementById('f-areas');
+      input.value = [...splitAreas(input.value), chip.dataset.area].join(', ');
+      renderAreaSuggestions();
+      input.focus();
+    });
     closeOnBackdropClick(document.getElementById('modal-backdrop'), requestCloseModal);
   }
 

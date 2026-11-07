@@ -279,7 +279,7 @@ describe('API integration', () => {
     assert.equal(all.status, 200);
     assert.deepEqual(Object.keys(all.json.find((c) => c.id === future.id)), [
       'id', 'name', 'type', 'applicationDeadline', 'abstractDeadline', 'manuscriptDeadline',
-      'startDate', 'endDate', 'website', 'tag', 'location', 'isHidden',
+      'startDate', 'endDate', 'website', 'tag', 'areas', 'location', 'isHidden',
       'createdBy', 'updatedBy', 'createdAt', 'updatedAt',
     ]);
     assert.deepEqual(names(all), ['ExFuture', 'ExNoEnd', 'ExPast']);
@@ -311,6 +311,49 @@ describe('API integration', () => {
     const rows = String(ndjson.json).trim().split('\n').map((l) => JSON.parse(l));
     assert.deepEqual(rows.map((r) => r.name).sort(), ['ExFuture', 'ExNoEnd']);
     assert.deepEqual(Object.keys(rows[0]), ['name']);
+  });
+
+  it('stores areas, normalizes them, and keeps them through edits and rollback', async () => {
+    const adminLogin = await request('POST', '/api/auth/login', {
+      body: { username: 'root', password: 'toor' },
+    });
+    const cookie = adminLogin.cookie;
+    const create = (body) => request('POST', '/api/conferences', { cookie, body: { type: 'domestic', ...body } });
+
+    const none = await create({ name: 'AreaNone' });
+    assert.deepEqual(none.json.conference.areas, []);
+
+    // Comma styles, spacing and duplicates
+    const made = await create({ name: 'AreaMade', areas: ' 機械学習, ネットワーク、セキュリティ，機械学習 ,' });
+    assert.equal(made.status, 201);
+    const id = made.json.conference.id;
+    assert.deepEqual(made.json.conference.areas, ['機械学習', 'ネットワーク', 'セキュリティ']);
+    const fromArray = await create({ name: 'AreaArray', areas: ['a,b', 'c'] });
+    assert.deepEqual(fromArray.json.conference.areas, ['a', 'b', 'c']);
+
+    // Other edits leave areas alone, including a client that doesn't know about them
+    const renamed = await request('PUT', `/api/conferences/${id}`, { cookie, body: { name: 'AreaRenamed' } });
+    assert.deepEqual(renamed.json.conference.areas, ['機械学習', 'ネットワーク', 'セキュリティ']);
+
+    const edited = await request('PUT', `/api/conferences/${id}`, { cookie, body: { areas: 'HCI' } });
+    assert.deepEqual(edited.json.conference.areas, ['HCI']);
+    const cleared = await request('PUT', `/api/conferences/${id}`, { cookie, body: { areas: '' } });
+    assert.deepEqual(cleared.json.conference.areas, []);
+
+    // Rollback restores areas
+    const logs = await request('GET', `/api/admin/logs?conferenceId=${id}`, { cookie });
+    const clearing = logs.json.logs.find((l) => l.action === 'update' && l.afterData.areas === '');
+    const rolled = await request('POST', `/api/admin/logs/${clearing.id}/rollback`, { cookie });
+    assert.deepEqual(rolled.json.conference.areas, ['HCI']);
+
+    // Invalid values
+    assert.equal((await create({ name: 'Bad', areas: '未設定' })).status, 400);
+    assert.equal((await create({ name: 'Bad', areas: 'x'.repeat(51) })).status, 400);
+    assert.equal((await create({ name: 'Bad', areas: Array.from({ length: 11 }, (_, i) => `a${i}`) })).status, 400);
+
+    // Public outputs
+    const exported = await request('GET', '/api/conferences/export?fields=id,areas');
+    assert.deepEqual(exported.json.find((c) => c.id === id).areas, ['HCI']);
   });
 
   it('calendar feed: valid iCalendar, public records only', async () => {

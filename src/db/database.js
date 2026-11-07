@@ -66,6 +66,10 @@ function getDb() {
       // Add tag column (identifier) to help reliably group recurring conferences
       db.prepare("ALTER TABLE conferences ADD COLUMN tag TEXT NOT NULL DEFAULT ''").run();
     }
+    if (!cols.includes('areas')) {
+      // Research areas of a conference, comma separated
+      db.prepare("ALTER TABLE conferences ADD COLUMN areas TEXT NOT NULL DEFAULT ''").run();
+    }
     for (const table of ['users', 'account_applications']) {
       const columns = db.prepare(`PRAGMA table_info('${table}')`).all().map((r) => r.name);
       if (!columns.includes('notify_email')) {

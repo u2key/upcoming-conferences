@@ -14,6 +14,7 @@ const COLUMNS = [
   'end_date',
   'website',
   'tag',
+  'areas',
   'location',
   'is_hidden',
   'created_by',
@@ -35,6 +36,7 @@ function toPublic(row) {
     endDate: row.end_date,
     website: row.website || '',
     tag: row.tag || '',
+    areas: row.areas ? row.areas.split(',') : [],
     location: row.location,
     isHidden: !!row.is_hidden,
     createdBy: row.created_by,
@@ -42,6 +44,38 @@ function toPublic(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+/** Label the list page uses for conferences with no area, so no area may take this name. */
+const UNSET_AREA = '未設定';
+const MAX_AREAS = 10;
+const MAX_AREA_LENGTH = 50;
+
+/**
+ * Normalize areas from a comma separated string or an array into the stored
+ * comma separated form. Japanese commas are accepted, since people type them.
+ */
+function normalizeAreas(value) {
+  const list = Array.isArray(value) ? value : [value ?? ''];
+  const areas = [
+    ...new Set(
+      list
+        .flatMap((item) => String(item).split(/[,、，]/))
+        .map((area) => area.trim())
+        .filter(Boolean)
+    ),
+  ];
+  const invalid = (message) => {
+    const err = new Error(message);
+    err.status = 400;
+    return err;
+  };
+  if (areas.length > MAX_AREAS) throw invalid(`分野は${MAX_AREAS}個までです`);
+  if (areas.some((area) => area.length > MAX_AREA_LENGTH)) {
+    throw invalid(`分野名は${MAX_AREA_LENGTH}文字までです`);
+  }
+  if (areas.includes(UNSET_AREA)) throw invalid(`「${UNSET_AREA}」は分野名に使えません`);
+  return areas.join(',');
 }
 
 function rowFromInput(data) {
@@ -68,6 +102,7 @@ function rowFromInput(data) {
     end_date: data.endDate || data.end_date || null,
     website: (data.website || data.website || '').trim(),
     tag: (data.tag || data.tag || '').trim(),
+    areas: normalizeAreas(data.areas),
     location: (data.location || '').trim(),
   };
 }
@@ -137,8 +172,8 @@ function create(data, userId) {
     .prepare(
       `INSERT INTO conferences
          (name, type, application_deadline, abstract_deadline, manuscript_deadline,
-          start_date, end_date, website, tag, location, is_hidden, created_by, updated_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          start_date, end_date, website, tag, areas, location, is_hidden, created_by, updated_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       fields.name,
@@ -150,6 +185,7 @@ function create(data, userId) {
       fields.end_date,
       fields.website,
       fields.tag,
+      fields.areas,
       fields.location,
       0,
       userId,
@@ -189,7 +225,7 @@ function update(id, data, userId) {
     `UPDATE conferences SET
        name = ?, type = ?,
        application_deadline = ?, abstract_deadline = ?, manuscript_deadline = ?,
-     start_date = ?, end_date = ?, website = ?, tag = ?, location = ?,
+     start_date = ?, end_date = ?, website = ?, tag = ?, areas = ?, location = ?,
        updated_by = ?, updated_at = datetime('now')
      WHERE id = ?`
   ).run(
@@ -202,6 +238,7 @@ function update(id, data, userId) {
     fields.end_date,
     fields.website,
     fields.tag,
+    fields.areas,
     fields.location,
     userId,
     id
@@ -267,7 +304,7 @@ function restoreFromSnapshot(snapshot, userId) {
       `UPDATE conferences SET
          name = ?, type = ?,
          application_deadline = ?, abstract_deadline = ?, manuscript_deadline = ?,
-       start_date = ?, end_date = ?, website = ?, tag = ?, location = ?, is_hidden = ?,
+       start_date = ?, end_date = ?, website = ?, tag = ?, areas = ?, location = ?, is_hidden = ?,
          updated_by = ?, updated_at = datetime('now')
        WHERE id = ?`
     ).run(
@@ -280,6 +317,7 @@ function restoreFromSnapshot(snapshot, userId) {
       snapshot.end_date,
     snapshot.website || '',
     snapshot.tag || '',
+    snapshot.areas ?? existing.areas, // snapshots from before areas existed don't have it
     snapshot.location || '',
     snapshot.is_hidden ? 1 : 0,
     userId,

@@ -841,3 +841,69 @@ table.hidden-list td.actions .btn { margin: 0.1rem 0; }
   gap: 0.5rem;
   margin: 1rem 0 0.5rem;
 }
+
+/* Research areas */
+.area-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  margin: 0.75rem 0 0;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.area-filter[hidden] {
+  display: none;
+}
+.area-filter legend {
+  padding: 0 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.area-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.9rem;
+  margin-right: auto;
+}
+.area-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.name-cell {
+  min-width: 0;
+}
+.area-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  margin-top: 0.25rem;
+}
+.area-tag {
+  padding: 0.05rem 0.45rem;
+  font-size: 0.7rem;
+  color: var(--muted);
+  background: var(--hover);
+  border-radius: 999px;
+}
+.area-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+.area-chip {
+  padding: 0.1rem 0.5rem;
+  font-family: inherit;
+  font-size: 0.75rem;
+  color: var(--text);
+  background: var(--hover);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}

@@ -44,6 +44,13 @@
       </span>
     </div>
 
+    <fieldset id="area-filter" class="area-filter" hidden>
+      <legend>分野</legend>
+      <div id="area-options" class="area-options"></div>
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-areas-all">すべて選択</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-areas-none">すべて解除</button>
+    </fieldset>
+
     <div id="missing-next-notice" class="flash flash-ok" hidden style="margin-top:0.75rem"></div>
 
     <div class="live-status disconnected" id="live-status">
@@ -120,6 +127,11 @@
           <div class="form-field full">
             <label for="f-name">学会名 *</label>
             <input id="f-name" name="name" required maxlength="200" />
+          </div>
+          <div class="form-field full">
+            <label for="f-areas">分野（任意、複数はカンマ区切り）</label>
+            <input id="f-areas" name="areas" maxlength="500" placeholder="例: 機械学習, ネットワーク" />
+            <div id="area-suggestions" class="area-suggestions"></div>
           </div>
           <div class="form-field">
             <label for="f-type">区分 *</label>
