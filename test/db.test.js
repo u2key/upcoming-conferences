@@ -92,6 +92,36 @@ describe('database', () => {
     assert.equal(remaining, 1);
   });
 
+  it('unifies areas of records sharing a tag at startup, losing nothing', () => {
+    const config = require('../src/config');
+    const originalPath = config.dbPath;
+    closeDb();
+    config.dbPath = path.join(tmpDir, 'areas.db');
+    try {
+      let db = getDb();
+      const insert = db.prepare(`INSERT INTO conferences (name, type, tag, areas) VALUES (?, 'domestic', ?, ?)`);
+      insert.run('a1', 'a', 'x,y');
+      insert.run('a2', 'a', 'y,z');
+      insert.run('a3', 'a', '');
+      insert.run('same1', 'same', 'q');
+      insert.run('same2', 'same', 'q');
+      insert.run('none1', '', 'one');
+      insert.run('none2', '', 'two');
+      closeDb();
+
+      db = getDb();
+      const areasOf = (name) => db.prepare('SELECT areas FROM conferences WHERE name = ?').get(name).areas;
+      for (const name of ['a1', 'a2', 'a3']) assert.equal(areasOf(name), 'x,y,z');
+      assert.equal(areasOf('same1'), 'q');
+      // No tag means no group
+      assert.equal(areasOf('none1'), 'one');
+      assert.equal(areasOf('none2'), 'two');
+    } finally {
+      closeDb();
+      config.dbPath = originalPath;
+    }
+  });
+
   it('migrates operation_logs from a database that predates delete logging', () => {
     const Database = require('better-sqlite3');
     const config = require('../src/config');

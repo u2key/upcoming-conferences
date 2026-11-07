@@ -77,12 +77,31 @@ function getDb() {
       }
     }
     migrateOperationLogsActions(db, schema);
+    reconcileTagAreas(db);
   } catch (e) {
     // Migration failures should not crash startup; log and continue
     console.error('DB migration check failed:', e && e.message ? e.message : e);
   }
 
   return db;
+}
+
+/**
+ * Records sharing a tag share their areas. Records saved before that rule may
+ * differ, so give them the union rather than lose anything. No-op once they agree.
+ */
+function reconcileTagAreas(database) {
+  const tags = database
+    .prepare(`SELECT tag FROM conferences WHERE tag <> '' GROUP BY tag HAVING COUNT(DISTINCT areas) > 1`)
+    .all();
+  const select = database.prepare('SELECT areas FROM conferences WHERE tag = ? ORDER BY id');
+  const update = database.prepare('UPDATE conferences SET areas = ? WHERE tag = ?');
+  database.transaction(() => {
+    for (const { tag } of tags) {
+      const areas = new Set(select.all(tag).flatMap((r) => r.areas.split(',').filter(Boolean)));
+      update.run([...areas].slice(0, 10).join(','), tag);
+    }
+  })();
 }
 
 /** Close the database connection (for tests / shutdown). */

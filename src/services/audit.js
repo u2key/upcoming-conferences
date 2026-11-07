@@ -148,7 +148,9 @@ function rollback(logId, userId) {
     ).run(userId, entry.conferenceId);
     after = conferences.getRaw(entry.conferenceId);
   } else if (entry.beforeData) {
-    conferences.restoreFromSnapshot(entry.beforeData, userId);
+    conferences.restoreFromSnapshot(entry.beforeData, userId, {
+      areasChanged: !!entry.afterData && entry.beforeData.areas !== entry.afterData.areas,
+    });
     after = conferences.getRaw(entry.beforeData.id);
   } else {
     const err = new Error('この操作にはロールバック用のスナップショットがありません');

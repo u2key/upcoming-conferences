@@ -160,6 +160,15 @@ router.get('/', (req, res) => {
   }
 });
 
+/** GET /api/conferences/tags — tags in use with their areas, for the edit form (includes hidden records) */
+router.get('/tags', requireAuth, (_req, res) => {
+  try {
+    res.json({ tags: conferences.listTags() });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
 /** GET /api/conferences/:id */
 router.get('/:id', (req, res) => {
   try {

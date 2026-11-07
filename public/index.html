@@ -129,9 +129,16 @@
             <input id="f-name" name="name" required maxlength="200" />
           </div>
           <div class="form-field full">
+            <label for="f-tag">タグ（識別子、任意）</label>
+            <input id="f-tag" name="tag" type="text" placeholder="例: icml" maxlength="100" list="tag-options" autocomplete="off" />
+            <datalist id="tag-options"></datalist>
+            <div class="hint">同一学会を識別するための一意な識別子（任意）。表記ゆれが多い場合は指定してください。</div>
+          </div>
+          <div class="form-field full">
             <label for="f-areas">分野（任意、複数はカンマ区切り）</label>
             <input id="f-areas" name="areas" maxlength="500" placeholder="例: 機械学習, ネットワーク" />
             <div id="area-suggestions" class="area-suggestions"></div>
+            <div id="area-tag-hint" class="hint" hidden></div>
           </div>
           <div class="form-field">
             <label for="f-type">区分 *</label>
@@ -147,11 +154,6 @@
           <div class="form-field">
             <label for="f-website">ウェブサイト（URL）</label>
             <input id="f-website" name="website" type="url" placeholder="https://..." maxlength="500" />
-          </div>
-          <div class="form-field">
-            <label for="f-tag">タグ（識別子、任意）</label>
-            <input id="f-tag" name="tag" type="text" placeholder="例: icml" maxlength="100" />
-            <div class="hint">同一学会を識別するための一意な識別子（任意）。表記ゆれが多い場合は指定してください。</div>
           </div>
           <div class="form-field">
             <label for="f-app">申込期限</label>

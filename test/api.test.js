@@ -356,6 +356,85 @@ describe('API integration', () => {
     assert.deepEqual(exported.json.find((c) => c.id === id).areas, ['HCI']);
   });
 
+  it('areas belong to the tag: inherited, applied to all, logged, and safe to roll back', async () => {
+    const adminLogin = await request('POST', '/api/auth/login', {
+      body: { username: 'root', password: 'toor' },
+    });
+    const cookie = adminLogin.cookie;
+    const create = async (body) =>
+      (await request('POST', '/api/conferences', { cookie, body: { type: 'domestic', ...body } })).json.conference;
+    const put = async (id, body) =>
+      (await request('PUT', `/api/conferences/${id}`, { cookie, body })).json.conference;
+    const areas = async (c) => (await request('GET', `/api/conferences/${c.id}`, { cookie })).json.conference.areas;
+
+    const y2024 = await create({ name: 'Series 2024', tag: 'series', areas: 'AI' });
+    const y2025 = await create({ name: 'Series 2025', tag: 'series' }); // inherits
+    assert.deepEqual(y2025.areas, ['AI']);
+    const other = await create({ name: 'Other', tag: 'other', areas: 'NW' });
+    const untagged = await create({ name: 'Untagged', areas: 'AI' });
+
+    // An edit applies to the whole tag, and to nothing else
+    await put(y2025.id, { areas: 'AI, HCI' });
+    assert.deepEqual(await areas(y2024), ['AI', 'HCI']);
+    assert.deepEqual(await areas(other), ['NW']);
+    assert.deepEqual(await areas(untagged), ['AI']);
+
+    // So does a new record that names areas, including clearing them
+    const y2026 = await create({ name: 'Series 2026', tag: 'series', areas: 'ML' });
+    assert.deepEqual(await areas(y2024), ['ML']);
+    assert.deepEqual(y2026.areas, ['ML']);
+
+    // Untagged records stay independent
+    const untagged2 = await create({ name: 'Untagged 2', areas: 'X' });
+    assert.deepEqual(await areas(untagged), ['AI']);
+    assert.deepEqual(untagged2.areas, ['X']);
+
+    // Other edits leave areas alone
+    await put(y2024.id, { location: 'Kyoto' });
+    assert.deepEqual(await areas(y2025), ['ML']);
+
+    // Moving to another tag takes its areas, and leaves the old tag's alone
+    const moved = await put(untagged.id, { tag: 'other' });
+    assert.deepEqual(moved.areas, ['NW']);
+    assert.deepEqual(await areas(other), ['NW']);
+    // Moving with areas named applies them to the new tag
+    await put(untagged.id, { tag: 'series', areas: 'NEW' });
+    assert.deepEqual(await areas(y2024), ['NEW']);
+    assert.deepEqual(await areas(other), ['NW']);
+    await put(untagged.id, { tag: '' });
+
+    // Moving to an unused tag keeps its own areas
+    const fresh = await put(untagged2.id, { tag: 'brand-new' });
+    assert.deepEqual(fresh.areas, ['X']);
+
+    // Every changed record is logged, and any of those logs undoes it for the tag
+    await put(y2024.id, { areas: 'BEFORE' });
+    await put(y2024.id, { areas: 'AFTER' });
+    const logsOf = async (c) => (await request('GET', `/api/admin/logs?conferenceId=${c.id}`, { cookie })).json.logs;
+    const siblingLog = (await logsOf(y2026)).find((l) => l.action === 'update' && l.afterData.areas === 'AFTER');
+    assert.equal(siblingLog.beforeData.areas, 'BEFORE');
+    await request('POST', `/api/admin/logs/${siblingLog.id}/rollback`, { cookie });
+    for (const c of [y2024, y2025, y2026]) assert.deepEqual(await areas(c), ['BEFORE']);
+
+    // Undoing an unrelated edit must not bring back old areas
+    const located = await put(y2025.id, { location: 'Osaka' });
+    assert.equal(located.location, 'Osaka');
+    const locationLog = (await logsOf(y2025)).find((l) => l.action === 'update' && l.afterData.location === 'Osaka');
+    await put(y2024.id, { areas: 'NEWER' });
+    await request('POST', `/api/admin/logs/${locationLog.id}/rollback`, { cookie });
+    for (const c of [y2024, y2025, y2026]) assert.deepEqual(await areas(c), ['NEWER']);
+    assert.equal((await request('GET', `/api/conferences/${y2025.id}`, { cookie })).json.conference.location, '');
+
+    // Hidden records follow too, and the tag list counts them
+    await request('POST', `/api/conferences/${y2026.id}/hide`, { cookie });
+    await put(y2024.id, { areas: 'WITH-HIDDEN' });
+    assert.deepEqual(await areas(y2026), ['WITH-HIDDEN']);
+    const tags = await request('GET', '/api/conferences/tags', { cookie });
+    assert.deepEqual(tags.json.tags.find((t) => t.tag === 'series'), { tag: 'series', areas: ['WITH-HIDDEN'], count: 3 });
+    assert.ok(!tags.json.tags.some((t) => t.tag === ''));
+    assert.equal((await request('GET', '/api/conferences/tags')).status, 401);
+  });
+
   it('calendar feed: valid iCalendar, public records only', async () => {
     const adminLogin = await request('POST', '/api/auth/login', {
       body: { username: 'root', password: 'toor' },

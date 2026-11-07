@@ -106,6 +106,53 @@ function setupAreaFilter() {
   document.getElementById('btn-areas-none').addEventListener('click', () => setAll(false));
 }
 
+/* ---------- Areas follow the tag ---------- */
+
+let tagInfo = null; // tag -> { areas, count }; null until loaded
+let formOriginalTag = '';
+let areasBeforeAutofill = null; // what was typed, to restore if the tag stops matching
+
+async function loadTagInfo() {
+  tagInfo = null;
+  try {
+    const { tags } = await api('/api/conferences/tags');
+    tagInfo = new Map(tags.map((t) => [t.tag, t]));
+    document.getElementById('tag-options').innerHTML = tags
+      .map((t) => `<option value="${escapeHtml(t.tag)}"></option>`)
+      .join('');
+    renderAreaTagHint();
+  } catch (err) {
+    console.error(err); // the form still works; submitting then leaves blank areas to the server
+  }
+}
+
+/** How many other records saving this form would change. */
+function renderAreaTagHint() {
+  const form = document.getElementById('conf-form');
+  const hint = document.getElementById('area-tag-hint');
+  const tag = form.elements.tag.value.trim();
+  const info = tagInfo && tagInfo.get(tag);
+  const editingThisTag = form.elements.id.value && tag === formOriginalTag;
+  const others = info ? info.count - (editingThisTag ? 1 : 0) : 0;
+  hint.hidden = others <= 0;
+  hint.textContent = others > 0 ? `分野はタグごとに共通です。保存すると、タグ「${tag}」の他の${others}件にも反映されます。` : '';
+}
+
+function onTagInput() {
+  const form = document.getElementById('conf-form');
+  const areasInput = form.elements.areas;
+  const info = tagInfo && tagInfo.get(form.elements.tag.value.trim());
+  if (info) {
+    if (areasBeforeAutofill === null) areasBeforeAutofill = areasInput.value;
+    areasInput.value = info.areas.join(', ');
+  } else if (areasBeforeAutofill !== null) {
+    areasInput.value = areasBeforeAutofill;
+    areasBeforeAutofill = null;
+  }
+  renderAreaSuggestions();
+  renderAreaTagHint();
+}
+
 /** Buttons for existing areas under the form's input, so the same name gets reused. */
 function renderAreaSuggestions() {
   const input = document.getElementById('f-areas');
@@ -533,7 +580,10 @@ function openModal(conference) {
     form.elements.areas.value = (conference.areas || []).join(', ');
   }
   renderAreaSuggestions();
-
+  formOriginalTag = conference ? conference.tag || '' : '';
+  areasBeforeAutofill = null;
+  renderAreaTagHint();
+  loadTagInfo();
   formSnapshot = JSON.stringify(formToBody(form));
   backdrop.hidden = false;
   form.elements.name.focus();
@@ -574,6 +624,9 @@ async function onSubmitForm(e) {
   errEl.textContent = '';
   const id = form.elements.id.value;
   const body = formToBody(form);
+  // Tags not loaded means blank may just be an autofill that never happened.
+  // Blank applies to the whole tag, so leave that case to the server.
+  if (!tagInfo && !body.areas) delete body.areas;
 
   try {
     if (id) {
@@ -873,12 +926,17 @@ function setupEditorUI() {
   if (currentUser) {
     document.getElementById('conf-form').addEventListener('submit', onSubmitForm);
     document.getElementById('btn-cancel-modal').addEventListener('click', requestCloseModal);
-    document.getElementById('f-areas').addEventListener('input', renderAreaSuggestions);
+    document.getElementById('f-areas').addEventListener('input', () => {
+      areasBeforeAutofill = null; // typed by hand now, so keep it
+      renderAreaSuggestions();
+    });
+    document.getElementById('f-tag').addEventListener('input', onTagInput);
     document.getElementById('area-suggestions').addEventListener('click', (e) => {
       const chip = e.target.closest('.area-chip');
       if (!chip) return;
       const input = document.getElementById('f-areas');
       input.value = [...splitAreas(input.value), chip.dataset.area].join(', ');
+      areasBeforeAutofill = null;
       renderAreaSuggestions();
       input.focus();
     });

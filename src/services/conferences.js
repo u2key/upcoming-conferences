@@ -160,14 +160,53 @@ function list({ type, includeHidden = false } = {}) {
   return rows.map(toPublic);
 }
 
+/** Areas of a tag's other records, or null if it has none. Records sharing a tag share their areas. */
+function tagAreasOf(tag, excludeId) {
+  if (!tag) return null;
+  const row = getDb().prepare('SELECT areas FROM conferences WHERE tag = ? AND id <> ? LIMIT 1').get(tag, excludeId ?? -1);
+  return row ? row.areas : null;
+}
+
+/** Give a tag's other records these areas, logging each so it can be rolled back. */
+function syncTagAreas(tag, areas, id, userId) {
+  if (!tag) return;
+  const db = getDb();
+  const others = db.prepare('SELECT * FROM conferences WHERE tag = ? AND id <> ? AND areas <> ?').all(tag, id, areas);
+  for (const before of others) {
+    db.prepare(`UPDATE conferences SET areas = ?, updated_by = ?, updated_at = datetime('now') WHERE id = ?`).run(
+      areas,
+      userId,
+      before.id
+    );
+    audit.logOperation({
+      conferenceId: before.id,
+      userId,
+      action: 'update',
+      beforeData: before,
+      afterData: getRaw(before.id),
+    });
+  }
+}
+
+/** Every tag in use with its areas and record count, for filling in the edit form. */
+function listTags() {
+  return getDb()
+    .prepare(`SELECT tag, MIN(areas) AS areas, COUNT(*) AS count FROM conferences WHERE tag <> '' GROUP BY tag ORDER BY tag`)
+    .all()
+    .map((r) => ({ tag: r.tag, areas: r.areas ? r.areas.split(',') : [], count: r.count }));
+}
+
 /**
  * Create a conference and write an audit log entry.
+ * With no areas given, it takes those of its tag. Given areas apply to the whole tag.
  */
 function create(data, userId) {
   const fields = rowFromInput(data);
   validate(fields);
+  if (data.areas === undefined) fields.areas = tagAreasOf(fields.tag) ?? fields.areas;
 
   const db = getDb();
+  return db.transaction(() => {
   const result = db
     .prepare(
       `INSERT INTO conferences
@@ -200,8 +239,10 @@ function create(data, userId) {
     beforeData: null,
     afterData: created,
   });
+  syncTagAreas(fields.tag, fields.areas, created.id, userId);
 
   return toPublic(created);
+  })();
 }
 
 /**
@@ -219,8 +260,13 @@ function update(id, data, userId) {
   // Keep type from input if provided, else existing
   if (data.type) fields.type = data.type;
   validate(fields);
+  // Moving to another tag without naming areas means taking that tag's
+  if (data.areas === undefined && fields.tag !== existing.tag) {
+    fields.areas = tagAreasOf(fields.tag, id) ?? fields.areas;
+  }
 
   const db = getDb();
+  return db.transaction(() => {
   db.prepare(
     `UPDATE conferences SET
        name = ?, type = ?,
@@ -252,8 +298,10 @@ function update(id, data, userId) {
     beforeData: existing,
     afterData: updated,
   });
+  syncTagAreas(fields.tag, fields.areas, id, userId);
 
   return toPublic(updated);
+  })();
 }
 
 /**
@@ -288,8 +336,10 @@ function setHidden(id, isHidden, userId) {
 /**
  * Restore conference state from a snapshot (used by rollback).
  * Does not itself write a new log — caller (audit.rollback) does.
+ * Areas belong to the tag, so undoing an unrelated edit must not bring back
+ * old ones: only `areasChanged`, an undo of an areas edit, restores them.
  */
-function restoreFromSnapshot(snapshot, userId) {
+function restoreFromSnapshot(snapshot, userId, { areasChanged = false } = {}) {
   if (!snapshot || !snapshot.id) {
     const err = new Error('不正なスナップショットです');
     err.status = 400;
@@ -300,6 +350,10 @@ function restoreFromSnapshot(snapshot, userId) {
   const existing = getRaw(snapshot.id);
 
   if (existing) {
+    const areas =
+      areasChanged && snapshot.tag === existing.tag && snapshot.areas !== undefined
+        ? snapshot.areas
+        : tagAreasOf(snapshot.tag, snapshot.id) ?? snapshot.areas ?? existing.areas;
     db.prepare(
       `UPDATE conferences SET
          name = ?, type = ?,
@@ -317,12 +371,13 @@ function restoreFromSnapshot(snapshot, userId) {
       snapshot.end_date,
     snapshot.website || '',
     snapshot.tag || '',
-    snapshot.areas ?? existing.areas, // snapshots from before areas existed don't have it
+    areas,
     snapshot.location || '',
     snapshot.is_hidden ? 1 : 0,
     userId,
     snapshot.id
     );
+    syncTagAreas(snapshot.tag, areas, snapshot.id, userId);
   } else {
     // Never re-create a row: a missing conference was permanently deleted.
     const err = new Error('学会が見つかりません');
@@ -420,5 +475,6 @@ module.exports = {
   deleteById,
   deleteHiddenByTag,
   listMissingTags,
+  listTags,
   COLUMNS,
 };

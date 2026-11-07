@@ -11,7 +11,7 @@
 - アカウント申請 → 管理者承認（承認/パスワードリセット時にメール送信）
 - 編集者は学会の追加・修正のみ可能（非表示レコードは API で読み取り可、変更操作は不可）
 - ダークモード（OS 設定に追従、ヘッダーで切り替え可能）
-- 学会の分野（複数可）。一覧のチェックボックスで表示を絞り込み。iframe 用に `?areas=機械学習,ネットワーク&theme=dark` で初期状態を指定可能（iframe 内の既定はライト表示）
+- 学会の分野（複数可）。分野はタグごとに共通で、フォームにタグを入力すると自動で反映され、保存すると同じタグの全レコードが更新される。一覧のチェックボックスで表示を絞り込み。iframe 用に `?areas=機械学習,ネットワーク&theme=dark` で初期状態を指定可能（iframe 内の既定はライト表示）
 - 学会はタグ（tag）で識別。タグ単位で「全レコードが非表示」の場合に通知を表示
 - 未登録の学会の登録を促す通知メール（毎月第1月曜日に自動送信、管理コンソールからプレビュー付きで手動送信。受信はユーザごとに選択可能でデフォルトはオン）
 - サーバ側で SameSite=None; Secure 指定のクロスサイト cookie を有効化可能（iframe 埋め込み対応）
@@ -164,8 +164,9 @@ GET /api/conferences/calendar.ics
 ### 既存の主な API（要約）
 - GET `/api/conferences` — 公開リスト（`?type=&includeHidden=1` をサポート; includeHidden は認証ユーザのみ）
 - GET `/api/conferences/:id` — 単一取得（非表示は未認証時 404）
-- POST `/api/conferences` — 追加（認証）
-- PUT `/api/conferences/:id` — 更新（認証）
+- GET `/api/conferences/tags` — 使用中のタグと分野・件数（認証）
+- POST `/api/conferences` — 追加（認証）。`areas` を省略すると同じタグの分野を引き継ぐ
+- PUT `/api/conferences/:id` — 更新（認証）。`areas` を指定すると同じタグの全レコードに反映（各レコードを操作ログに記録）
 - POST `/api/conferences/:id/hide` — 非表示（管理者のみ）
 - POST `/api/conferences/:id/unhide` — 再表示（管理者のみ）
 - DELETE `/api/conferences/:id` — 恒久削除（管理者のみ。操作ログに記録、ロールバック不可）
